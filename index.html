@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OMRD projects</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="icon" type="image/png" href="https://i.postimg.cc/V6m0cH7c/phoenox4.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&display=swap');
+    body { background: #020617; color: #e2e8f0; font-family: 'Chakra Petch', sans-serif; overflow-x: hidden; }
+    .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(15px); border: 1px solid rgba(59, 130, 246, 0.2); }
+    .nav-btn { border-left: 4px solid transparent; transition: 0.3s; cursor: pointer; }
+    .nav-btn:hover, .nav-active { background: rgba(59, 130, 246, 0.1); border-left-color: #3b82f6; transform: translateX(5px); }
+    .search-input { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(59, 130, 246, 0.3); color: white; transition: 0.3s; }
+    .search-input:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+    .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+  <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 border-b border-blue-900/40 pb-8">
+    <div class="flex items-center gap-5">
+      <img src="https://i.postimg.cc/bv5XZWgV/the-order-of_the-phoenix.png" class="w-20 h-20 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+      <div>
+        <h1 class="text-4xl font-black text-blue-500 italic uppercase tracking-tighter leading-none">OMRD system</h1>
+        <p class="text-[10px] text-blue-400/50 tracking-[0.4em] font-bold uppercase mt-2 italic">โครงการพัฒนาศักยภาพหน่วยปฏิบัติการพิเศษ</p>
+      </div>
+    </div>
+    <button onclick="goToAdmin()" class="bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/50 px-8 py-3 rounded-full font-black text-sm uppercase italic transition-all">🔑 AUTHORIZED PERSONNEL</button>
+  </header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    <div class="lg:col-span-3 space-y-6 lg:sticky lg:top-8 w-full">
+      <div id="center-status-box" class="p-6 rounded-[2rem] border-2 transition-all">
+        <div class="flex items-center gap-3 font-black text-xs uppercase italic" id="status-title">STATUS: LOADING...</div>
+        <p class="text-[12px] mt-2 font-medium opacity-80 italic" id="status-desc">-</p>
+      </div>
+      <div class="space-y-3">
+        <button onclick="changePage('training', this)" class="nav-btn nav-active w-full text-left p-5 glass rounded-2xl flex items-center gap-4"><span class="font-bold uppercase italic text-sm">🎯 รายการฝึก</span></button>
+        <button onclick="changePage('staff', this)" class="nav-btn w-full text-left p-5 glass rounded-2xl flex items-center gap-4"><span class="font-bold uppercase italic text-sm">👨‍✈️ เจ้าหน้าที่</span></button>
+        <button onclick="changePage('trainee', this)" class="nav-btn w-full text-left p-5 glass rounded-2xl flex items-center gap-4"><span class="font-bold uppercase italic text-sm">🛡️ ผู้รับการฝึก</span></button>
+        <button onclick="changePage('physical', this)" class="nav-btn w-full text-left p-5 glass rounded-2xl flex items-center gap-4"><span class="font-bold uppercase italic text-sm">💪 ทดสอบร่างกาย</span></button>
+        <button onclick="changePage('daily', this)" class="nav-btn w-full text-left p-5 glass rounded-2xl flex items-center gap-4"><span class="font-bold uppercase italic text-sm">📋 รายงานรายวัน</span></button>
+        <button onclick="changePage('timeline', this)" class="nav-btn w-full text-left p-5 glass rounded-2xl flex items-center gap-4"><span class="font-bold uppercase italic text-sm">⏳ ประวัติปฏิบัติการ</span></button>
+      </div>
+    </div>
+    
+    <div class="lg:col-span-9 glass rounded-[2.5rem] p-8 min-h-[600px] shadow-2xl relative w-full flex flex-col">
+      <div id="search-container" class="mb-6">
+        <div class="relative">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-blue-400"><i class="fas fa-search"></i></span>
+          <input type="text" id="page-search-input" oninput="handleSearch()" class="search-input w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm font-bold uppercase italic" placeholder="🔍 ค้นหาข้อมูลในหน้านี้...">
+        </div>
+      </div>
+      <div id="dynamic-content" class="flex-1 overflow-y-auto custom-scrollbar"></div>
+    </div>
+  </div>
+
+  <div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
+    <div class="glass w-full max-w-5xl rounded-[3rem] border border-blue-500/20 max-h-[95vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(59,130,246,0.15)]">
+      <div class="relative bg-slate-900/50 p-6 md:p-8 border-b border-white/5 flex justify-between items-start">
+        <div class="flex items-center gap-6">
+          <div class="relative">
+            <div class="w-20 h-20 md:w-24 md:h-24 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl flex items-center justify-center text-3xl md:text-4xl shadow-2xl ring-4 ring-blue-500/20">
+              <i class="fas fa-user-astronaut text-white drop-shadow-md"></i>
+            </div>
+            <div id="prof-status-indicator" class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-slate-900 flex items-center justify-center shadow-lg bg-gray-500"></div>
+          </div>
+          <div>
+            <h2 id="prof-name" class="text-2xl md:text-4xl font-black text-white uppercase italic tracking-tight leading-none drop-shadow-lg">Loading...</h2>
+            <p id="prof-id" class="text-blue-400 text-[10px] font-bold tracking-[0.3em] mt-3 uppercase opacity-80">IDENTIFICATION</p>
+          </div>
+        </div>
+        <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/20 flex items-center justify-center text-white transition">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-6 md:p-8 space-y-8 custom-scrollbar">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="p-6 rounded-3xl bg-blue-900/10 border border-blue-500/20 relative overflow-hidden">
+                <div class="absolute -right-4 -top-4 text-blue-500/10 text-8xl"><i class="fas fa-flag"></i></div>
+                <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Missions</p>
+                <h3 id="stat-total" class="text-3xl font-black text-white italic">0</h3>
+            </div>
+            <div class="p-6 rounded-3xl bg-purple-900/10 border border-purple-500/20 relative overflow-hidden">
+                 <div class="absolute -right-4 -top-4 text-purple-500/10 text-8xl"><i class="fas fa-chart-pie"></i></div>
+                 <p class="text-[9px] font-black text-purple-400 uppercase tracking-widest mb-1">Success</p>
+                 <h3 id="stat-rate" class="text-3xl font-black text-white italic">0%</h3>
+            </div>
+            <div class="p-6 rounded-3xl bg-green-900/10 border border-green-500/20 relative overflow-hidden">
+                 <div class="absolute -right-4 -top-4 text-green-500/10 text-8xl"><i class="fas fa-check-circle"></i></div>
+                 <p class="text-[9px] font-black text-green-400 uppercase tracking-widest mb-1">Passed</p>
+                 <h3 id="stat-passed" class="text-3xl font-black text-green-400 italic">0</h3>
+            </div>
+            <div class="p-6 rounded-3xl bg-red-900/10 border border-red-500/20 relative overflow-hidden">
+                 <div class="absolute -right-4 -top-4 text-red-500/10 text-8xl"><i class="fas fa-times-circle"></i></div>
+                 <p class="text-[9px] font-black text-red-400 uppercase tracking-widest mb-1">Failed</p>
+                 <h3 id="stat-failed" class="text-3xl font-black text-red-400 italic">0</h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 mb-2 border-b border-white/5 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center text-blue-400"><i class="fas fa-dumbbell"></i></div>
+                    <h3 class="text-sm font-black text-white uppercase tracking-widest italic">Training Dossier</h3>
+                </div>
+                <div id="prof-training-log" class="space-y-3"></div>
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 mb-2 border-b border-white/5 pb-4">
+                    <div class="w-10 h-10 rounded-xl bg-orange-600/20 flex items-center justify-center text-orange-400"><i class="fas fa-heartbeat"></i></div>
+                    <h3 class="text-sm font-black text-white uppercase tracking-widest italic">Physical Analytics</h3>
+                </div>
+                <div id="prof-physical-log" class="space-y-3"></div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-vhj0G-LM90sPaJqTaAYFUyxXkcEgWnpcrWaaWlKbRPLGSXWhlnDnTow_wT54kfku/exec";
+
+    let cacheData = null;
+    let currentPage = 'training';
+
+    window.onload = () => {
+      document.getElementById('dynamic-content').innerHTML = `<div class="flex flex-col items-center justify-center h-full min-h-[400px]"><i class="fas fa-sync fa-spin text-5xl text-blue-500 mb-4"></i><p class="text-[10px] font-black tracking-[0.4em] text-blue-500/50 animate-pulse">ESTABLISHING UPLINK...</p></div>`;
+      syncAll();
+      setInterval(syncAll, 10000); 
+    };
+
+    function syncAll() {
+      fetch(`${GAS_API_URL}?mode=index`)
+        .then(res => res.json())
+        .then(data => {
+          const isDataChanged = JSON.stringify(cacheData) !== JSON.stringify(data);
+          if (isDataChanged) {
+            cacheData = data;
+            updateStatusBox(data.Daily_Reports ? data.Daily_Reports[1] : null);
+            renderPage();
+          }
+        })
+        .catch(err => console.error("Error fetching data:", err));
+    }
+
+    function parseDate(dateStr) {
+      if(!dateStr) return 0;
+      const parts = dateStr.split('/');
+      if(parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
+      return 0;
+    }
+
+    function changePage(pageId, btn) {
+      if(btn) { document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-active')); btn.classList.add('nav-active'); }
+      currentPage = pageId;
+      document.getElementById('page-search-input').value = '';
+      renderPage();
+    }
+
+    function handleSearch() {
+      renderPage();
+    }
+
+    function renderPage() {
+      if(!cacheData) return;
+      const keyword = document.getElementById('page-search-input')?.value.trim().toLowerCase() || '';
+      
+      if (currentPage === 'trainee') renderTrainees(keyword);
+      else if (currentPage === 'staff') renderStaffList(keyword);
+      else if (currentPage === 'training') renderTraining(keyword);
+      else if (currentPage === 'physical') renderPhysical(keyword);
+      else if (currentPage === 'timeline') renderTimeline(keyword);
+      else if (currentPage === 'daily') renderDailyLogPublic(keyword);
+    }
+
+    function autoCalculateTraineeStatus(traineeId) {
+      if (!cacheData) return "ปกติ";
+      let totalMissions = 0, totalPassed = 0;
+
+      if (cacheData.Training_Log) {
+        cacheData.Training_Log.slice(1).forEach(r => {
+          if (r[5] === "ฝึกสำเร็จ") {
+            totalMissions++;
+            const passedList = r[6] ? r[6].split(',').map(s=>s.trim()) : [];
+            if (passedList.includes(traineeId)) totalPassed++;
+          }
+        });
+      }
+
+      if (cacheData.Physical_Test) {
+        cacheData.Physical_Test.slice(1).forEach(r => {
+          if (r[3] === "ทดสอบสำเร็จ") {
+            totalMissions++;
+            const passedList = r[4] ? r[4].split(',').map(s=>s.trim()) : [];
+            if (passedList.includes(traineeId)) totalPassed++;
+          }
+        });
+      }
+
+      if (totalMissions === 0) return "ปกติ";
+      const rate = (totalPassed / totalMissions) * 100;
+      if (rate <= 50) return "จำหน่าย (ต่ำกว่าเกณฑ์)";
+      if (rate <= 60) return "เฝ้าติดตาม";
+      return "ปกติ";
+    }
+
+    function viewProfile(id) {
+        if(!cacheData || !cacheData.Trainees) return;
+        const t = cacheData.Trainees.find(r => r[0] === id);
+        if(!t) return;
+        
+        document.getElementById('prof-name').innerText = t[1];
+        document.getElementById('prof-id').innerText = `ID: ${id} | ORIGIN: ${t[2]}`;
+        
+        const statusInd = document.getElementById('prof-status-indicator');
+        const st = t[3] || autoCalculateTraineeStatus(id);
+
+        if (st.includes('จำหน่าย') || st === 'คัดออก') {
+             statusInd.className = "absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-slate-900 flex items-center justify-center shadow-lg bg-red-500 animate-pulse";
+             statusInd.innerHTML = '<i class="fas fa-times text-[10px] text-white"></i>';
+        } else if (st === 'เฝ้าติดตาม' || st === 'เฝ้าระวัง') {
+             statusInd.className = "absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-slate-900 flex items-center justify-center shadow-lg bg-yellow-500";
+             statusInd.innerHTML = '<i class="fas fa-exclamation text-[10px] text-black"></i>';
+        } else {
+             statusInd.className = "absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-slate-900 flex items-center justify-center shadow-lg bg-green-500";
+             statusInd.innerHTML = '<i class="fas fa-check text-[10px] text-white"></i>';
+        }
+
+        let totalMissions = 0, totalPassed = 0, totalFailed = 0;
+        let tH = '', pH = '';
+        
+        if (cacheData.Training_Log) {
+          cacheData.Training_Log.slice(1).forEach(r => { 
+              const passedList = r[6] ? r[6].split(',').map(s=>s.trim()) : [];
+              const isP = passedList.includes(id); 
+              const isCompleted = r[5] === "ฝึกสำเร็จ";
+              let statusHTML = '', cardClass = '';
+
+              if (isCompleted) {
+                  totalMissions++;
+                  if (isP) {
+                      totalPassed++;
+                      cardClass = 'bg-green-500/5 border-green-500/20 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.1)]';
+                      statusHTML = '<span class="bg-green-500/10 px-2 py-1 rounded text-[9px] font-black border border-green-500/20">PASSED <i class="fas fa-check"></i></span>';
+                  } else {
+                      totalFailed++;
+                      cardClass = 'bg-red-500/5 border-red-500/20 text-red-400';
+                      statusHTML = '<span class="bg-red-500/10 px-2 py-1 rounded text-[9px] font-black border border-red-500/20">FAILED <i class="fas fa-times"></i></span>';
+                  }
+              } else {
+                  cardClass = 'bg-gray-500/5 border-gray-500/10 text-gray-500 opacity-60';
+                  statusHTML = `<span class="bg-gray-500/10 px-2 py-1 rounded text-[9px] font-black border border-gray-500/20">${r[5] || 'PENDING'}</span>`;
+              }
+              
+              tH += `<div class="p-4 rounded-2xl border ${cardClass} flex justify-between items-center transition hover:bg-white/5">
+                      <div>
+                          <div class="text-[11px] font-black uppercase italic tracking-tight">${r[1]}</div>
+                          <div class="text-[9px] opacity-70 mt-1 uppercase tracking-widest">${r[3] || '-'}</div>
+                      </div>
+                      ${statusHTML}
+                     </div>`; 
+          });
+        }
+
+        if (cacheData.Physical_Test) {
+          cacheData.Physical_Test.slice(1).forEach((r, i) => { 
+              const passedList = r[4] ? r[4].split(',').map(s=>s.trim()) : [];
+              const isP = passedList.includes(id); 
+              const isCompleted = r[3] === "ทดสอบสำเร็จ";
+              let statusHTML = '', cardClass = '';
+
+              if (isCompleted) {
+                  totalMissions++;
+                  if (isP) {
+                      totalPassed++;
+                      cardClass = 'bg-green-500/5 border-green-500/20 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.1)]';
+                      statusHTML = '<span class="bg-green-500/10 px-2 py-1 rounded text-[9px] font-black border border-green-500/20">PASSED <i class="fas fa-check"></i></span>';
+                  } else {
+                      totalFailed++;
+                      cardClass = 'bg-red-500/5 border-red-500/20 text-red-400';
+                      statusHTML = '<span class="bg-red-500/10 px-2 py-1 rounded text-[9px] font-black border border-green-500/20">FAILED <i class="fas fa-times"></i></span>';
+                  }
+              } else {
+                  cardClass = 'bg-gray-500/5 border-gray-500/10 text-gray-500 opacity-60';
+                  statusHTML = `<span class="bg-gray-500/10 px-2 py-1 rounded text-[9px] font-black border border-gray-500/20">${r[3] || 'PENDING'}</span>`;
+              }
+
+              pH += `<div class="p-4 rounded-2xl border ${cardClass} flex justify-between items-center transition hover:bg-white/5">
+                      <div>
+                          <div class="text-[11px] font-black uppercase italic tracking-tight">${r[1] || ('TEST '+(i+1))}</div>
+                          <div class="text-[9px] opacity-70 mt-1 uppercase tracking-widest">${r[0] || '-'}</div>
+                      </div>
+                      ${statusHTML}
+                     </div>`; 
+          });
+        }
+
+        const successRate = totalMissions > 0 ? Math.round((totalPassed / totalMissions) * 100) : 0;
+        
+        animateValue("stat-total", 0, totalMissions, 1000);
+        animateValue("stat-passed", 0, totalPassed, 1000);
+        animateValue("stat-failed", 0, totalFailed, 1000);
+        animateValue("stat-rate", 0, successRate, 1000, "%");
+
+        document.getElementById('prof-training-log').innerHTML = tH || '<div class="text-center opacity-30 text-xs py-4">NO DATA</div>';
+        document.getElementById('prof-physical-log').innerHTML = pH || '<div class="text-center opacity-30 text-xs py-4">NO DATA</div>';
+        document.getElementById('profile-modal').classList.remove('hidden');
+    }
+
+    function animateValue(id, start, end, duration, suffix = "") {
+        const obj = document.getElementById(id);
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            obj.innerHTML = Math.floor(progress * (end - start) + start) + suffix;
+            if (progress < 1) { window.requestAnimationFrame(step); }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    function renderTrainees(keyword = '') {
+      if(!cacheData.Trainees) return;
+      const visibleTrainees = cacheData.Trainees.slice(1).filter(r => r[3] !== "คัดออก" && (
+        r[0].toLowerCase().includes(keyword) || r[1].toLowerCase().includes(keyword) || r[2].toLowerCase().includes(keyword)
+      ));
+      
+      let html = `<h2 class="text-2xl font-black text-purple-400 mb-8 italic border-l-8 border-purple-500 pl-4 uppercase tracking-tighter">Personnel Directory (${visibleTrainees.length})</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fadeIn">`;
+      
+      if(visibleTrainees.length === 0) {
+        html += `<p class="text-center opacity-30 py-10 font-black uppercase col-span-full">--- ไม่พบข้อมูลผู้รับการฝึก ---</p>`;
+      } else {
+        visibleTrainees.forEach(r => {
+          const status = r[3] || autoCalculateTraineeStatus(r[0]);
+          let cardStyle = "border-white/5 hover:border-purple-500/50";
+          let dotStyle = "bg-green-500 shadow-[0_0_10px_#22c55e] animate-pulse";
+          let textStyle = "text-gray-100 group-hover:text-purple-400";
+          let tagHTML = "";
+
+          if (status === "เฝ้าติดตาม" || status === "เฝ้าระวัง") {
+            cardStyle = "border-yellow-500/50 bg-yellow-500/5 hover:border-yellow-500";
+            dotStyle = "bg-yellow-500 shadow-[0_0_10px_#eab308]";
+            textStyle = "text-yellow-400";
+            tagHTML = `<div class="text-[9px] text-yellow-400 font-bold tracking-wider uppercase mt-2 italic">⚠️ เฝ้าติดตาม (ผลฝึก <= 60%)</div>`;
+          } else if (status.includes("จำหน่าย")) {
+            cardStyle = "border-red-500/50 bg-red-500/5 hover:border-red-500";
+            dotStyle = "bg-red-500 shadow-[0_0_10px_#ef4444]";
+            textStyle = "text-red-400";
+            tagHTML = `<div class="text-[9px] text-red-400 font-bold tracking-wider uppercase mt-2 italic">🛑 ${status}: ${r[4] || '-'}</div>`;
+          }
+
+          html += `<div onclick="viewProfile('${r[0]}')" class="p-6 glass rounded-[2.5rem] ${cardStyle} transition-all cursor-pointer group shadow-xl">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-2.5 h-2.5 rounded-full ${dotStyle}"></div>
+              <h4 class="font-bold ${textStyle} uppercase italic leading-none">${r[1]}</h4>
+            </div>
+            <div class="text-[9px] text-gray-500 font-black tracking-[0.2em] uppercase">ID: ${r[0]} | ORIGIN: ${r[2]}</div>
+            ${tagHTML}
+          </div>`;
+        });
+      }
+      document.getElementById('dynamic-content').innerHTML = html + "</div>";
+    }
+
+    function renderPhysical(keyword = '') {
+      let html = `<h2 class="text-2xl font-black text-orange-500 mb-8 italic border-l-8 border-orange-500 pl-4 uppercase tracking-tighter">Readiness Analytics</h2><div class="grid gap-4 animate-fadeIn">`;
+      if (!cacheData.Physical_Test || cacheData.Physical_Test.length <= 1) {
+        html += `<p class="text-center opacity-20 py-20 font-black uppercase">--- No Data Stream ---</p>`;
+      } else {
+        const filtered = cacheData.Physical_Test.slice(1).filter(r => 
+          (r[0] && r[0].toLowerCase().includes(keyword)) || 
+          (r[1] && r[1].toLowerCase().includes(keyword)) || 
+          (r[2] && r[2].toLowerCase().includes(keyword)) || 
+          (r[3] && r[3].toLowerCase().includes(keyword))
+        );
+
+        if(filtered.length === 0) {
+          html += `<p class="text-center opacity-30 py-10 font-black uppercase">--- ไม่พบข้อมูลทดสอบร่างกาย ---</p>`;
+        } else {
+          filtered.forEach((r) => {
+            let sCls = "border-gray-500/20 text-gray-500 bg-gray-500/5";
+            if(r[3] === "กำลังเตรียมการ") sCls = "border-orange-400/20 text-orange-400 font-bold shadow-[0_0_8px_rgba(251,146,60,0.2)] bg-orange-400/5";
+            if(r[3] === "กำลังทดสอบ") sCls = "border-yellow-400/20 text-yellow-400 font-black shadow-[0_0_8px_rgba(250,204,21,0.2)] bg-yellow-400/5";
+            if(r[3] === "ทดสอบสำเร็จ") sCls = "border-green-500/20 text-green-500 font-black bg-green-500/5";
+            html += `<div class="p-5 glass rounded-3xl flex justify-between items-center border-white/5 shadow-2xl">
+              <div><div class="flex items-center gap-3 mb-1"><span class="text-[9px] bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded font-black italic uppercase">RESULT</span>
+              <h4 class="text-lg font-bold text-white uppercase italic tracking-tight">${r[1]||'Assessment'}</h4></div>
+              <p class="text-[9px] text-gray-500 font-black uppercase italic tracking-widest">📅 ${r[0]} | ${r[2]||'-'}</p></div>
+              <span class="px-4 py-1.5 rounded-xl border ${sCls} text-[10px] font-black uppercase italic shadow-lg">${r[3]||'PENDING'}</span></div>`;
+          });
+        }
+      }
+      document.getElementById('dynamic-content').innerHTML = html + `</div>`;
+    }
+
+    function renderTraining(keyword = '') {
+      let html = `<h2 class="text-2xl font-black text-blue-400 mb-8 italic border-l-8 border-blue-500 pl-4 uppercase tracking-tighter">Mission Modules</h2><div class="space-y-6 animate-fadeIn">`;
+      if(!cacheData.Training_Log) return;
+      const rows = cacheData.Training_Log.slice(1);
+      
+      const grouped = {};
+      rows.forEach(r => {
+        const cat = r[0] || "ทั่วไป";
+        if (!grouped[cat]) grouped[cat] = [];
+        const match = !keyword || (
+          (r[0] && r[0].toLowerCase().includes(keyword)) ||
+          (r[1] && r[1].toLowerCase().includes(keyword)) ||
+          (r[2] && r[2].toLowerCase().includes(keyword)) ||
+          (r[4] && r[4].toLowerCase().includes(keyword)) ||
+          (r[5] && r[5].toLowerCase().includes(keyword))
+        );
+        if (r[1] && match) grouped[cat].push(r);
+      });
+
+      const categories = Object.keys(grouped).filter(cat => grouped[cat].length > 0);
+      if (categories.length > 0) {
+        categories.forEach(cat => {
+          html += `<div class="glass p-6 rounded-3xl border border-blue-500/20"><h3 class="text-lg font-black text-blue-400 uppercase italic mb-4 flex items-center gap-2"><i class="fas fa-folder-open text-sm"></i> ${cat}</h3><div class="grid gap-3">`;
+          html += grouped[cat].map(r => {
+             let statusColor = "border-gray-500/40 text-gray-400 bg-gray-500/10";
+             let cardStyle = "bg-white/5 border-white/10";
+             
+             if(r[5] === "กำลังเตรียมการ") {
+                 statusColor = "border-orange-500/60 text-orange-400 font-bold bg-orange-500/15";
+                 cardStyle = "border-orange-500/50 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.15)]";
+             } else if(r[5] === "กำลังดำเนินการ") {
+                 statusColor = "border-blue-500/60 text-blue-400 font-black bg-blue-500/15";
+                 cardStyle = "border-blue-500/50 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]";
+             } else if(r[5] === "ฝึกสำเร็จ") {
+                 statusColor = "border-green-500/60 text-green-400 font-black bg-green-500/15";
+                 cardStyle = "border-green-500/50 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.15)]";
+             } else {
+                 statusColor = "border-gray-500/50 text-gray-300 bg-gray-500/10";
+                 cardStyle = "border-gray-500/40 bg-gray-900/40";
+             }
+
+             return `<div class="p-4 border-2 ${cardStyle} rounded-2xl flex justify-between items-center transition hover:scale-[1.01]">
+                <div>
+                    <h4 class="text-sm font-bold text-white uppercase italic">${r[1]}</h4>
+                    ${r[2] ? `<p class="text-[11px] text-gray-200 my-1 font-medium">${r[2]}</p>` : ''}
+                    <p class="text-[9px] text-gray-400 font-bold uppercase mt-1 italic">📅 ${r[3]||'-'} | COMMAND: ${r[4]||'-'}</p>
+                </div>
+                <span class="px-3 py-1.5 rounded-xl border-2 ${statusColor} text-[9px] font-black uppercase italic">${r[5]||'รอดำเนินการ'}</span>
+             </div>`;
+          }).join('');
+          html += `</div></div>`;
+        });
+      } else {
+        html += `<p class="text-xs text-gray-600 italic pl-5 font-black uppercase opacity-50 text-center py-10">--- ไม่พบรายการฝึกที่ค้นหา ---</p>`;
+      }
+      document.getElementById('dynamic-content').innerHTML = html + `</div>`;
+    }
+
+    function renderStaffList(keyword = '') {
+      let html = `<h2 class="text-2xl font-black text-green-400 mb-8 italic border-l-8 border-green-500 pl-4 uppercase tracking-tighter">Command Authority</h2><div class="space-y-6 animate-fadeIn">`;
+      if(!cacheData.Staff_Committee) return;
+      const list = cacheData.Staff_Committee.slice(1);
+      
+      const grouped = {};
+      list.forEach(r => {
+        const cat = r[0] || "ทั่วไป";
+        if (!grouped[cat]) grouped[cat] = [];
+        const fullName = `${r[2] ? r[2] + ' ' : ''}${r[1]}${r[3] ? ' (' + r[3] + ')' : ''}`;
+        const match = !keyword || (
+          (r[0] && r[0].toLowerCase().includes(keyword)) ||
+          (r[1] && r[1].toLowerCase().includes(keyword)) ||
+          (r[2] && r[2].toLowerCase().includes(keyword)) ||
+          (r[3] && r[3].toLowerCase().includes(keyword)) ||
+          fullName.toLowerCase().includes(keyword)
+        );
+        if (r[1] && match) grouped[cat].push(r);
+      });
+
+      const categories = Object.keys(grouped).filter(cat => grouped[cat].length > 0);
+      if (categories.length > 0) {
+        categories.forEach(cat => {
+          html += `<div class="glass p-6 rounded-3xl border border-green-500/20"><h3 class="text-lg font-black text-green-400 uppercase italic mb-4 flex items-center gap-2"><i class="fas fa-users-cog text-sm"></i> ${cat}</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-3">`;
+          html += grouped[cat].map(r => {
+              const isDischarged = r[4] === 'จำหน่าย';
+              const borderClass = isDischarged ? "border-red-500 bg-red-900/10" : "border-l-4 border-blue-500 bg-white/5";
+              const textClass = isDischarged ? "text-red-400" : "text-gray-100";
+              return `<div class="p-4 rounded-xl ${borderClass}">
+                  <h4 class="font-bold ${textClass} text-[11px] uppercase italic">
+                      ${r[2] ? r[2] + ' ' : ''}${r[1]}${r[3] ? ' (' + r[3] + ')' : ''}
+                  </h4>
+                  ${isDischarged ? `<div class="text-[9px] text-red-500 font-bold mt-1 uppercase italic">🛑 จำหน่าย: ${r[5]||'-'}</div>` : ""}
+              </div>`;
+          }).join('');
+          html += `</div></div>`;
+        });
+      } else html += `<p class="text-[10px] text-gray-600 pl-4 uppercase tracking-widest text-center py-10">--- ไม่พบรายชื่อเจ้าหน้าที่ที่ค้นหา ---</p>`;
+      document.getElementById('dynamic-content').innerHTML = html + `</div>`;
+    }
+
+    function renderDailyLogPublic(keyword = '') {
+      if(!cacheData.Daily_Log) return;
+      const logs = cacheData.Daily_Log.slice(1).filter((r, i) => {
+        const dayStr = `day ${i+1}`;
+        return !keyword || (
+          dayStr.includes(keyword) ||
+          (r[0] && r[0].toLowerCase().includes(keyword)) ||
+          (r[1] && r[1].toLowerCase().includes(keyword)) ||
+          (r[2] && r[2].toLowerCase().includes(keyword)) ||
+          (r[3] && r[3].toLowerCase().includes(keyword))
+        );
+      });
+
+      let html = `<h2 class="text-2xl font-black text-red-500 mb-8 italic border-l-8 border-red-500 pl-4 uppercase tracking-tighter">Daily Operations Log</h2><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fadeIn">`;
+      
+      if (!logs || logs.length === 0) {
+        html += `<p class="text-center opacity-20 py-20 font-black uppercase col-span-full">--- ไม่พบรายงานรายวัน ---</p>`;
+      } else {
+        logs.forEach((r, i) => {
+          const dayNum = i + 1;
+          const status = r[1] || "ยังไม่ได้รายงาน";
+          const desc = r[2] || "-";
+          let cardStyle = "border-white/5 opacity-40";
+          let statusBadge = `<span class="text-[9px] bg-gray-800 text-gray-500 px-2.5 py-1 rounded-lg font-black uppercase">PENDING</span>`;
+
+          if (status === "ปกติ") {
+            cardStyle = "border-green-500/30 bg-green-500/5 shadow-[0_0_15px_rgba(34,197,94,0.1)]";
+            statusBadge = `<span class="text-[9px] bg-green-500/20 text-green-400 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-check mr-1"></i> ปกติ</span>`;
+          } else if (status === "ไม่ปกติ") {
+            cardStyle = "border-red-500/30 bg-red-500/5 shadow-[0_0_15px_rgba(239,68,68,0.1)]";
+            statusBadge = `<span class="text-[9px] bg-red-500/20 text-red-400 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> ไม่ปกติ</span>`;
+          } else if (status === "ไม่มีการฝึก") {
+            cardStyle = "border-amber-500/30 bg-amber-500/5 shadow-[0_0_15px_rgba(245,158,11,0.1)]";
+            statusBadge = `<span class="text-[9px] bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-ban mr-1"></i> ไม่มีฝึก</span>`;
+          }
+
+          html += `
+            <div class="p-5 glass rounded-2xl border ${cardStyle} transition-all relative overflow-hidden">
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <span class="text-[10px] font-black text-blue-400 tracking-widest uppercase">DAY ${dayNum < 10 ? '0' + dayNum : dayNum}</span>
+                  <h4 class="text-sm font-bold text-white uppercase italic mt-0.5"><i class="fas fa-calendar-day mr-1 text-xs text-blue-400"></i> ${r[0] || '-'}</h4>
+                </div>
+                ${statusBadge}
+              </div>
+              ${status === 'ไม่ปกติ' ? `
+                <div class="mt-2 space-y-1">
+                  <p class="text-[11px] text-red-300 italic bg-red-950/40 p-2.5 rounded-xl border border-red-500/20 line-clamp-3"><strong class="not-italic uppercase text-[9px] text-red-400 block mb-0.5">เหตุผลความผิดปกติ:</strong> ${desc}</p>
+                </div>
+              ` : (desc && desc !== '-' ? `
+                <div class="mt-2">
+                  <p class="text-[11px] text-gray-300 italic bg-slate-900/60 p-2.5 rounded-xl border border-white/5 line-clamp-3"><strong class="not-italic uppercase text-[9px] text-gray-400 block mb-0.5">หมายเหตุ:</strong> ${desc}</p>
+                </div>
+              ` : '')}
+              ${r[3] ? `<div class="text-[9px] text-gray-500 font-bold uppercase mt-3 tracking-wider"><i class="fas fa-user-circle mr-1"></i> ${r[3]}</div>` : ''}
+            </div>
+          `;
+        });
+      }
+      document.getElementById('dynamic-content').innerHTML = html + `</div>`;
+    }
+
+    function renderTimeline(keyword = '') {
+      let html = `<h2 class="text-2xl font-black text-cyan-400 mb-8 italic border-l-8 border-cyan-500 pl-4 uppercase tracking-tighter">Mission History</h2>`;
+      let dateMap = {};
+      
+      if(cacheData.Training_Log) {
+          cacheData.Training_Log.slice(1).forEach((r) => {
+              if(r[5] && r[5] !== "รอดำเนินการ") {
+                  const dStr = r[3] || "ไม่ระบุวันที่";
+                  const match = !keyword || (dStr.toLowerCase().includes(keyword) || r[1].toLowerCase().includes(keyword) || (r[2]&&r[2].toLowerCase().includes(keyword)) || (r[4]&&r[4].toLowerCase().includes(keyword)) || r[5].toLowerCase().includes(keyword));
+                  if(match) {
+                      if(!dateMap[dStr]) dateMap[dStr] = { timestamp: parseDate(dStr), items: [] };
+                      dateMap[dStr].items.push({ type: 'training', title: r[1], desc: r[2], instructor: r[4], status: r[5] });
+                  }
+              }
+          });
+      }
+      
+      if(cacheData.Physical_Test) {
+          cacheData.Physical_Test.slice(1).forEach((r) => {
+               if(r[3] && r[3] !== "รอดำเนินการ") {
+                  const dStr = r[0] || "ไม่ระบุวันที่";
+                  const match = !keyword || (dStr.toLowerCase().includes(keyword) || r[1].toLowerCase().includes(keyword) || (r[2]&&r[2].toLowerCase().includes(keyword)) || r[3].toLowerCase().includes(keyword));
+                  if(match) {
+                      if(!dateMap[dStr]) dateMap[dStr] = { timestamp: parseDate(dStr), items: [] };
+                      dateMap[dStr].items.push({ type: 'physical', title: r[1] || 'Physical Assessment', desc: '', instructor: r[2], status: r[3] });
+                  }
+               }
+          });
+      }
+
+      if(cacheData.Daily_Log) {
+          cacheData.Daily_Log.slice(1).forEach((r, idx) => {
+              const status = r[1];
+              if(status && status !== "ยังไม่ได้รายงาน" && status !== "-") {
+                  const dStr = r[0] || "ไม่ระบุวันที่";
+                  let tLabel = `รายงานประจำวัน (DAY ${idx+1})`;
+                  if(status === "ไม่มีการฝึก") tLabel = `งดการฝึก / ไม่มีกิจกรรม (DAY ${idx+1})`;
+                  const match = !keyword || (dStr.toLowerCase().includes(keyword) || tLabel.toLowerCase().includes(keyword) || (r[2]&&r[2].toLowerCase().includes(keyword)) || status.toLowerCase().includes(keyword));
+                  if(match) {
+                      if(!dateMap[dStr]) dateMap[dStr] = { timestamp: parseDate(dStr), items: [] };
+                      dateMap[dStr].items.push({ type: 'daily', title: tLabel, desc: r[2], instructor: r[3], status: status });
+                  }
+              }
+          });
+      }
+
+      const sortedDates = Object.keys(dateMap).sort((a,b) => dateMap[b].timestamp - dateMap[a].timestamp);
+      
+      if(sortedDates.length === 0) {
+          html += `<div class="text-center opacity-30 py-20 font-black uppercase tracking-widest text-[10px]">--- ไม่พบประวัติปฏิบัติการที่ค้นหา ---</div>`;
+      } else {
+          html += `<div class="relative border-l-2 border-blue-900/50 ml-4 space-y-8 animate-fadeIn pb-10">`;
+          sortedDates.forEach(dateStr => {
+              const group = dateMap[dateStr];
+              
+              html += `
+              <div class="relative pl-8 group">
+                  <div class="absolute -left-[9px] top-2 w-4 h-4 rounded-full bg-cyan-500 shadow-[0_0_10px_currentColor] border-2 border-[#020617] group-hover:scale-125 transition-all"></div>
+                  <div class="glass p-5 rounded-2xl border border-white/5 shadow-xl hover:border-blue-500/30 transition-all space-y-4">
+                      <div class="flex items-center gap-3 border-b border-white/5 pb-3">
+                          <span class="text-xs text-cyan-400 font-black uppercase tracking-widest"><i class="fas fa-calendar-alt mr-2"></i> วันที่: ${dateStr}</span>
+                      </div>
+                      <div class="space-y-3">`;
+
+              group.items.forEach(item => {
+                  let badgeColor = item.type === 'training' ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : (item.type === 'physical' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30');
+                  let icon = item.type === 'training' ? '<i class="fas fa-bullseye"></i>' : (item.type === 'physical' ? '<i class="fas fa-heartbeat"></i>' : '<i class="fas fa-calendar-day"></i>');
+                  
+                  html += `
+                          <div class="p-3 bg-slate-950/40 rounded-xl border border-white/5">
+                              <div class="flex justify-between items-start mb-1">
+                                  <div class="flex items-center gap-2">
+                                      <span class="px-2 py-0.5 rounded border ${badgeColor} text-[8px] font-black uppercase italic tracking-wider flex items-center gap-1">${icon} ${item.type}</span>
+                                      <h4 class="text-sm font-bold text-white uppercase italic tracking-tight">${item.title}</h4>
+                                  </div>
+                                  <span class="text-[9px] font-black uppercase italic ${item.status.includes('สำเร็จ') || item.status === 'ปกติ' ? 'text-green-500' : (item.status === 'ไม่มีการฝึก' ? 'text-amber-400' : (item.status.includes('กำลัง') ? 'text-blue-400' : 'text-red-400'))}">${item.status}</span>
+                              </div>
+                              ${item.desc && item.desc !== '-' ? `<p class="text-[11px] text-gray-300 mt-2 bg-slate-900/60 p-2.5 rounded-lg border border-white/5 italic"><strong class="text-amber-400 font-black not-italic uppercase text-[9px] block mb-0.5">${item.status === 'ไม่ปกติ' ? 'เหตุผลความผิดปกติ:' : 'หมายเหตุ:'}</strong> ${item.desc}</p>` : ''}
+                              ${item.instructor ? `<div class="text-[9px] text-gray-500 mt-2 font-bold uppercase tracking-widest"><i class="fas fa-user-check mr-1"></i> INSTRUCTOR/REPORTER: ${item.instructor}</div>` : ''}
+                          </div>`;
+              });
+
+              html += `</div></div></div>`;
+          });
+          html += `</div>`;
+      }
+      document.getElementById('dynamic-content').innerHTML = html;
+    }
+
+    function updateStatusBox(sd) {
+      const b = document.getElementById('center-status-box');
+      const d = sd || ["ปกติ", "-", ""];
+      document.getElementById('status-title').innerText = "LIVE: " + d[0];
+      document.getElementById('status-desc').innerText = d[1];
+      if (d[0] === "ปกติ") b.className = "p-6 rounded-[2rem] border-2 border-green-500/40 bg-green-500/5 text-green-500 shadow-xl italic font-black";
+      else if (d[0] === "หยุดฝึก") b.className = "p-6 rounded-[2rem] border-2 border-gray-600 bg-black text-gray-300 shadow-xl italic font-black";
+      else b.className = "p-6 rounded-[2rem] border-2 border-red-500/40 bg-red-500/5 text-red-500 shadow-xl italic font-black animate-pulse";
+    }
+
+    function goToAdmin() { 
+      window.location.href = "admin.html"; 
+    }
+  </script>
+</body>
+</html>

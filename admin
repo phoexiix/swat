@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="th">   
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OMRD - COMMAND CENTER</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+   <link rel="icon" type="image/png" href="https://i.postimg.cc/V6m0cH7c/phoenox4.png">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@300;400;600;700&display=swap');
+    body { background: #020617; color: #e2e8f0; font-family: 'Chakra Petch', sans-serif; overflow-x: hidden; }
+    .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(59, 130, 246, 0.15); }
+    .f-in { background: #0f172a !important; color: white !important; border: 1px solid #1e293b !important; width: 100%; padding: 12px; border-radius: 12px; transition: 0.3s; margin-bottom: 8px; }
+    .f-in:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
+    .f-disabled { background: #1e293b !important; color: #94a3b8 !important; border: 1px solid #334155 !important; cursor: not-allowed; }
+    .nav-btn-admin { border-right: 4px solid transparent; text-align: right; cursor: pointer; transition: 0.3s; }
+    .nav-btn-admin:hover { background: rgba(59, 130, 246, 0.1); border-right-color: #3b82f6; transform: translateX(-5px); }
+    .active-nav { background: rgba(59, 130, 246, 0.15); border-right-color: #3b82f6; }
+    .search-input { background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(59, 130, 246, 0.3); color: white; transition: 0.3s; }
+    .search-input:focus { border-color: #3b82f6; outline: none; box-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .toast-item { min-width: 300px; padding: 16px; border-radius: 16px; display: flex; align-items: center; gap: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); shadow: 0 10px 30px rgba(0,0,0,0.5); animation: slideIn 0.3s ease-out forwards; }
+    .toast-success { background: rgba(16, 185, 129, 0.2); border-left: 4px solid #10b981; color: #10b981; }
+    .toast-error { background: rgba(239, 68, 68, 0.2); border-left: 4px solid #ef4444; color: #ef4444; }
+    .custom-checkbox input:checked + div { background-color: #3b82f6; border-color: #3b82f6; }
+    .custom-checkbox input:checked + div:after { content: '✓'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 10px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+  <div id="toast-container"></div>
+
+  <div id="login-overlay" class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950 backdrop-blur-2xl">
+    <div class="glass p-10 rounded-[3rem] max-w-md w-full border border-blue-500/30 text-center shadow-2xl">
+      <img src="https://i.postimg.cc/bv5XZWgV/the-order-of_the-phoenix.png" class="w-24 h-24 mx-auto mb-6 drop-shadow-[0_0_20px_rgba(59,130,246,0.6)]">
+      <h2 class="text-2xl font-black text-blue-500 uppercase italic tracking-widest mb-2">Restricted Console</h2>
+      <div class="space-y-4 mb-6">
+        <input type="text" id="admin-user" class="f-in text-center text-xl" placeholder="USERNAME">
+        <input type="password" id="admin-pass" class="f-in text-center text-xl tracking-[0.5em]" placeholder="••••••••">
+      </div>
+      <button onclick="checkAdminLogin()" class="w-full bg-blue-600 py-4 rounded-2xl font-black text-white hover:bg-blue-500 shadow-lg uppercase tracking-widest italic transition-all">Authorize Access</button>
+      <button onclick="logout()" class="w-full bg-white/5 py-3 rounded-2xl font-bold text-gray-500 mt-3 border border-white/10 hover:bg-white/10 transition-all uppercase text-[10px] tracking-[0.2em]">🔙 Back to Main</button>
+    </div>
+  </div>
+
+  <div id="admin-main-content" class="hidden">
+    <header class="flex justify-between items-center mb-10 border-b border-blue-900/30 pb-6">
+      <div class="flex items-center gap-4">
+        <img src="https://i.postimg.cc/bv5XZWgV/the-order-of_the-phoenix.png" class="w-16 h-16">
+        <div>
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent italic uppercase">OMRD ADMIN PANEL</h1>
+          <p class="text-[10px] text-blue-500/60 tracking-[0.3em] uppercase font-bold">Operational Manpower Readiness and Development Project</p>
+        </div>
+      </div>
+      <button onclick="logout()" class="flex items-center gap-3 bg-red-500/10 text-red-500 border border-red-500/30 px-6 py-2.5 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all uppercase text-xs">
+        <span>Logout</span><i class="fas fa-power-off"></i>
+      </button>
+    </header>
+
+    <div class="flex flex-col lg:flex-row-reverse gap-8 items-start">
+      <div class="lg:w-1/4 space-y-6 lg:sticky lg:top-8 w-full">
+        <div id="status-box-admin" class="p-6 rounded-[2rem] border-2 shadow-2xl relative text-right">
+          <span class="font-bold text-xs opacity-60 uppercase tracking-widest italic">System Status</span>
+          <div id="s-title-admin" class="text-xl font-black mt-1 uppercase italic">-</div>
+          <p id="s-desc-admin" class="text-[11px] mt-1 opacity-80">-</p>
+        </div>
+        <nav class="space-y-2">
+          <button onclick="changePage('training', this)" class="nav-btn-admin w-full p-4 glass rounded-2xl flex items-center justify-end gap-3 active-nav font-bold uppercase italic text-sm tracking-tight">รายการฝึก <i class="fas fa-bullseye text-blue-500"></i></button>
+          <button onclick="changePage('staff', this)" class="nav-btn-admin w-full p-4 glass rounded-2xl flex items-center justify-end gap-3 font-bold uppercase italic text-sm tracking-tight">เจ้าหน้าที่ <i class="fas fa-user-shield text-green-500"></i></button>
+          <button onclick="changePage('trainee', this)" class="nav-btn-admin w-full p-4 glass rounded-2xl flex items-center justify-end gap-3 font-bold uppercase italic text-sm tracking-tight">ผู้รับการฝึก <i class="fas fa-users text-purple-500"></i></button>
+          <button onclick="changePage('physical', this)" class="nav-btn-admin w-full p-4 glass rounded-2xl flex items-center justify-end gap-3 font-bold uppercase italic text-sm tracking-tight">ทดสอบร่างกาย <i class="fas fa-heartbeat text-orange-500"></i></button>
+          <button onclick="changePage('daily_log', this)" class="nav-btn-admin w-full p-4 glass rounded-2xl flex items-center justify-end gap-3 font-bold uppercase italic text-sm tracking-tight">รายงานรายวัน <i class="fas fa-file-alt text-red-500"></i></button>
+          <button onclick="changePage('timeline', this)" class="nav-btn-admin w-full p-4 glass rounded-2xl flex items-center justify-end gap-3 font-bold uppercase italic text-sm tracking-tight">ประวัติปฏิบัติการ <i class="fas fa-history text-cyan-400"></i></button>
+        </nav>
+        <button onclick="openStatusModal()" class="w-full p-5 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl text-white font-black hover:scale-[1.02] transition shadow-lg uppercase italic">
+          <i class="fas fa-broadcast-tower mr-2"></i> Broadcast Status
+        </button>
+      </div>
+
+      <div class="lg:w-3/4 glass rounded-[2.5rem] p-8 min-h-[700px] border border-white/5 relative shadow-2xl w-full flex flex-col">
+        <div id="summary-panel" class="hidden mb-10 grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <h2 id="admin-page-title" class="text-2xl font-black text-white italic uppercase border-l-8 border-blue-600 pl-4 tracking-tighter">Management</h2>
+          <div id="btn-group-container"></div>
+        </div>
+        <div id="admin-search-container" class="mb-6">
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-blue-400"><i class="fas fa-search"></i></span>
+            <input type="text" id="admin-page-search-input" oninput="handleAdminSearch()" class="search-input w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm font-bold uppercase italic" placeholder="🔍 ค้นหาข้อมูลในหน้านี้...">
+          </div>
+        </div>
+        <div id="dynamic-admin-content" class="custom-scrollbar flex-1"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="form-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
+    <div class="glass p-10 rounded-[3rem] max-w-2xl w-full border border-blue-500/30 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+      <h2 id="form-title" class="text-2xl font-black mb-8 text-blue-400 italic uppercase">New Record</h2>
+      <div id="form-fields" class="space-y-4"></div>
+      <div class="flex gap-3 mt-10">
+        <button id="modal-submit-btn" onclick="submitForm()" class="flex-[2] bg-blue-600 py-4 rounded-2xl font-black text-white hover:bg-blue-500 shadow-lg uppercase tracking-widest italic transition-all">Save Record</button>
+        <button onclick="closeModal('form-modal')" class="flex-1 bg-white/5 py-4 rounded-2xl font-bold border border-white/10 hover:bg-white/10 transition uppercase">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycby-vhj0G-LM90sPaJqTaAYFUyxXkcEgWnpcrWaaWlKbRPLGSXWhlnDnTow_wT54kfku/exec";
+
+    let isSubmitting = false;
+    let currentSheet = 'Training_Log', allDataCache = null;
+    let editMode = false, editingIndex = null;
+    let isStatusBroadcast = false;
+    let targetCategoryForAdd = null; 
+    let isReadOnlyMode = false;
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        const target = e.target;
+        if (isSubmitting || isReadOnlyMode) { e.preventDefault(); return; }
+        if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+          if (target.type === 'checkbox') return;
+          const focusable = Array.from(document.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]), select, textarea')).filter(el => !!(el.offsetWidth || el.offsetHeight) && !el.disabled);
+          const index = focusable.indexOf(target);
+          if (index === -1) return;
+          e.preventDefault();
+          if (target.id === 'admin-pass') { checkAdminLogin(); return; }
+          if (index === focusable.length - 1) {
+            if (target.closest('#form-modal')) submitForm();
+            target.blur(); return;
+          }
+          focusable[index + 1].focus();
+        }
+      }
+    });
+
+    window.onload = () => { syncDatabase(); };
+
+    function syncDatabase(callback) {
+      fetch(`${GAS_API_URL}?mode=admin`)
+        .then(res => res.json())
+        .then(data => {
+          const isDataChanged = JSON.stringify(allDataCache) !== JSON.stringify(data);
+          if (isDataChanged) {
+            allDataCache = data;
+            updateAdminStatusBox(data.Daily_Reports ? data.Daily_Reports[1] : null);
+            if (callback) callback(data);
+            else renderCurrentPage();
+          }
+        })
+        .catch(err => console.error("Error syncing database:", err));
+    }
+
+    function loadData() {
+      const container = document.getElementById('dynamic-admin-content');
+      if (!allDataCache) {
+        container.innerHTML = `<div class="flex flex-col items-center justify-center h-full min-h-[400px]"><i class="fas fa-sync fa-spin text-4xl text-blue-500 mb-4"></i><p class="text-[9px] font-black uppercase tracking-[0.4em] text-blue-500/50 animate-pulse italic">SYNCING DATABASE...</p></div>`;
+        syncDatabase(() => renderCurrentPage());
+      } else { renderCurrentPage(); syncDatabase(); }
+    }
+
+    function parseDate(dateStr) {
+      if(!dateStr) return 0;
+      const parts = dateStr.split('/');
+      if(parts.length === 3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
+      return 0;
+    }
+
+    function generateStaffCategoryOptions(selectedCat = "") {
+      if (!allDataCache || !allDataCache.Staff_Committee) return "";
+      const staffRows = allDataCache.Staff_Committee.slice(1);
+      const categories = [...new Set(staffRows.map(r => r[0] || "ทั่วไป"))];
+      return categories.map(cat => `<option value="${cat}" ${cat === selectedCat ? 'selected' : ''}>${cat}</option>`).join('');
+    }
+
+    function findStaffCategoryByName(instructorName) {
+      if (!instructorName || !allDataCache || !allDataCache.Staff_Committee) return "";
+      const staffRows = allDataCache.Staff_Committee.slice(1);
+      const found = staffRows.find(r => {
+        const fullName = `${r[2] ? r[2] + ' ' : ''}${r[1]}${r[3] ? ' (' + r[3] + ')' : ''}`;
+        return fullName.trim() === instructorName.trim();
+      });
+      return found ? (found[0] || "ทั่วไป") : "";
+    }
+
+    function updateInstructorList(catSelectId, nameSelectId, currentVal = "") {
+      const catVal = document.getElementById(catSelectId)?.value;
+      const nameSelect = document.getElementById(nameSelectId);
+      if (!nameSelect || !allDataCache || !allDataCache.Staff_Committee) return;
+
+      const staffRows = allDataCache.Staff_Committee.slice(1).filter(r => (r[0] || "ทั่วไป") === catVal && r[4] !== "จำหน่าย");
+      if (staffRows.length === 0) {
+        nameSelect.innerHTML = `<option value="">-- ไม่พบเจ้าหน้าที่ในหมวดหมู่นี้ --</option>`;
+      } else {
+        nameSelect.innerHTML = staffRows.map(r => {
+          const fullName = `${r[2] ? r[2] + ' ' : ''}${r[1]}${r[3] ? ' (' + r[3] + ')' : ''}`;
+          const isSel = fullName.trim() === currentVal.trim() ? 'selected' : '';
+          return `<option value="${fullName}" ${isSel}>${fullName}</option>`;
+        }).join('');
+      }
+    }
+
+    function autoCalculateTraineeStatus(traineeId) {
+      if (!allDataCache) return "ปกติ";
+      let totalMissions = 0, totalPassed = 0;
+      if (allDataCache.Training_Log) {
+        allDataCache.Training_Log.slice(1).forEach(r => {
+          if (r[5] === "ฝึกสำเร็จ") {
+            totalMissions++;
+            const passedList = r[6] ? r[6].split(',').map(s=>s.trim()) : [];
+            if (passedList.includes(traineeId)) totalPassed++;
+          }
+        });
+      }
+      if (allDataCache.Physical_Test) {
+        allDataCache.Physical_Test.slice(1).forEach(r => {
+          if (r[3] === "ทดสอบสำเร็จ") {
+            totalMissions++;
+            const passedList = r[4] ? r[4].split(',').map(s=>s.trim()) : [];
+            if (passedList.includes(traineeId)) totalPassed++;
+          }
+        });
+      }
+      if (totalMissions === 0) return "ปกติ";
+      const rate = (totalPassed / totalMissions) * 100;
+      if (rate <= 50) return "จำหน่าย (ต่ำกว่าเกณฑ์)";
+      if (rate <= 60) return "เฝ้าติดตาม";
+      return "ปกติ";
+    }
+
+    function handleAdminSearch() {
+      renderCurrentPage();
+    }
+
+    function renderCurrentPage() {
+      const container = document.getElementById('dynamic-admin-content');
+      const btnGroup = document.getElementById('btn-group-container');
+      const data = allDataCache;
+      if (!data) return;
+      const keyword = document.getElementById('admin-page-search-input')?.value.trim().toLowerCase() || '';
+      
+      if (currentSheet === 'Staff_Committee' || currentSheet === 'Training_Log') { 
+        const isStaff = currentSheet === 'Staff_Committee';
+        btnGroup.innerHTML = `<button onclick="openAddCategoryModal()" class="bg-blue-600 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg italic transition-all hover:bg-blue-500">➕ เพิ่มหมวดหมู่ใหม่</button>`;
+
+        const rows = data[currentSheet] ? data[currentSheet].slice(1) : [];
+        const categoriesMap = {};
+        rows.forEach((r, idx) => {
+          const catName = r[0] || "ทั่วไป";
+          if (!categoriesMap[catName]) categoriesMap[catName] = [];
+          
+          let match = false;
+          if (isStaff) {
+            const fullName = `${r[2] ? r[2] + ' ' : ''}${r[1]}${r[3] ? ' (' + r[3] + ')' : ''}`;
+            match = !keyword || (
+              catName.toLowerCase().includes(keyword) ||
+              (r[1] && r[1].toLowerCase().includes(keyword)) ||
+              (r[2] && r[2].toLowerCase().includes(keyword)) ||
+              (r[3] && r[3].toLowerCase().includes(keyword)) ||
+              fullName.toLowerCase().includes(keyword)
+            );
+          } else {
+            match = !keyword || (
+              catName.toLowerCase().includes(keyword) ||
+              (r[1] && r[1].toLowerCase().includes(keyword)) ||
+              (r[2] && r[2].toLowerCase().includes(keyword)) ||
+              (r[3] && r[3].toLowerCase().includes(keyword)) ||
+              (r[4] && r[4].toLowerCase().includes(keyword)) ||
+              (r[5] && r[5].toLowerCase().includes(keyword))
+            );
+          }
+
+          if (r[1] && match) categoriesMap[catName].push({ data: r, originalIndex: idx + 1 });
+        });
+
+        const catKeys = Object.keys(categoriesMap).filter(cat => categoriesMap[cat].length > 0);
+        let html = `<div class="space-y-6 animate-fadeIn">`;
+
+        if (catKeys.length > 0) {
+          catKeys.forEach(cat => {
+            const items = categoriesMap[cat];
+            html += `
+              <div class="glass p-6 rounded-3xl border border-white/10 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-white/10 pb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-lg">
+                      <i class="fas ${isStaff ? 'fa-users-cog' : 'fa-folder-open'}"></i>
+                    </div>
+                    <div>
+                      <h3 class="text-lg font-black text-white italic uppercase">${cat}</h3>
+                      <p class="text-[10px] text-gray-400 font-bold uppercase">${items.length} รายการ</p>
+                    </div>
+                  </div>
+                  <button onclick="openAddItemToCategoryModal('${cat}')" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 px-4 py-2 rounded-xl font-black text-[10px] uppercase italic transition-all">
+                    ➕ เพิ่มรายการในหมวดนี้
+                  </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            `;
+
+            items.forEach(item => {
+              const r = item.data;
+              const idx = item.originalIndex;
+              if (isStaff) {
+                const isDischarged = r[4] === "จำหน่าย";
+                const borderClass = isDischarged ? "border-red-500 bg-red-500/5" : "border-l-4 border-blue-500 bg-white/5";
+                const textClass = isDischarged ? "text-red-400" : "text-gray-100";
+                html += `<div class="p-4 rounded-xl ${borderClass} flex justify-between items-center transition-all hover:bg-white/10">
+                  <div>
+                    <h4 class="font-bold ${textClass} text-[11px] uppercase italic mb-1">${r[2] ? r[2]+' ' : ''}${r[1]}${r[3] ? ' ('+r[3]+')' : ''}</h4>
+                    ${isDischarged ? `<p class="text-[9px] text-red-500 font-bold uppercase italic">🛑 จำหน่าย: ${r[5] || '-'}</p>` : ''}
+                  </div>
+                  <button onclick="prepareStaffUpdate(${idx})" class="bg-gray-800/50 hover:bg-gray-700 text-gray-400 p-2 rounded-lg text-[10px] transition"><i class="fas fa-pen"></i></button>
+                </div>`;
+              } else {
+                let statusColor = "text-gray-400 border-gray-500/40 bg-gray-500/10";
+                let cardStyle = "bg-gray-900/40 border-gray-500/40";
+                
+                if(r[5] === "กำลังเตรียมการ") {
+                    statusColor = "border-orange-500/60 text-orange-400 font-bold bg-orange-500/15";
+                    cardStyle = "border-orange-500/50 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.15)]";
+                } else if(r[5] === "กำลังดำเนินการ") {
+                    statusColor = "border-blue-500/60 text-blue-400 font-black bg-blue-500/15";
+                    cardStyle = "border-blue-500/50 bg-blue-500/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]";
+                } else if(r[5] === "ฝึกสำเร็จ") {
+                    statusColor = "border-green-500/60 text-green-400 font-black bg-green-500/15";
+                    cardStyle = "border-green-500/50 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.15)]";
+                } else {
+                    statusColor = "border-gray-500/50 text-gray-300 bg-gray-500/10";
+                    cardStyle = "border-gray-500/40 bg-gray-900/40";
+                }
+
+                html += `<div class="p-4 border-2 ${cardStyle} rounded-2xl flex justify-between items-center transition hover:scale-[1.01]">
+                  <div>
+                    <h4 class="text-sm font-bold text-white uppercase italic">${r[1]}</h4>
+                    ${r[2] ? `<p class="text-[11px] text-gray-200 my-1 font-medium line-clamp-1">${r[2]}</p>` : ''}
+                    <p class="text-[9px] text-gray-400 font-bold uppercase mt-1 italic">📅 ${r[3]||'-'} | COMMAND: ${r[4]||'-'}</p>
+                    <div class="mt-2 inline-block px-3 py-1 rounded-xl border-2 ${statusColor} text-[9px] font-black uppercase italic">${r[5]||'รอดำเนินการ'}</div>
+                  </div>
+                  <button onclick="prepareTrainingUpdate(${idx})" class="bg-yellow-500/20 text-yellow-400 px-4 py-2 rounded-xl text-[10px] font-black border border-yellow-500/40 uppercase hover:bg-yellow-500 hover:text-white transition">Update</button>
+                </div>`;
+              }
+            });
+            html += `</div></div>`;
+          });
+        } else {
+          html += `<p class="text-[10px] text-gray-600 italic text-center py-20 font-black uppercase tracking-widest">--- ไม่พบข้อมูลที่ค้นหา ---</p>`;
+        }
+        container.innerHTML = html + `</div>`;
+      } 
+      else if (currentSheet === 'Trainees') {
+        btnGroup.innerHTML = `<button onclick="openGenericAddModal()" class="bg-blue-600 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg italic transition-all hover:bg-blue-500">➕ Add Trainee</button>`;
+        const traineesList = data.Trainees ? data.Trainees.slice(1).map((r, i) => ({ data: r, originalIndex: i + 1 })).filter(item => {
+          const r = item.data;
+          return !keyword || (
+            r[0].toLowerCase().includes(keyword) ||
+            r[1].toLowerCase().includes(keyword) ||
+            r[2].toLowerCase().includes(keyword) ||
+            (r[3] && r[3].toLowerCase().includes(keyword))
+          );
+        }) : [];
+
+        if (traineesList.length === 0) {
+          container.innerHTML = `<p class="text-center opacity-30 py-20 font-black uppercase tracking-widest text-[10px]">--- ไม่พบผู้รับการฝึกที่ค้นหา ---</p>`;
+        } else {
+          container.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">` + traineesList.map(item => {
+               const r = item.data;
+               const i = item.originalIndex - 1;
+               const autoStatus = autoCalculateTraineeStatus(r[0]);
+               const status = r[3] || autoStatus;
+               let cardStyle = "border-white/5";
+               let dotStyle = "bg-green-500 animate-pulse";
+               let titleStyle = "text-gray-200 group-hover:text-purple-400";
+               let tagHTML = "";
+
+               if (status === "เฝ้าติดตาม" || status === "เฝ้าระวัง") {
+                 cardStyle = "border-yellow-500/50 bg-yellow-500/5 hover:border-yellow-500";
+                 dotStyle = "bg-yellow-500 shadow-[0_0_10px_#eab308]";
+                 titleStyle = "text-yellow-400";
+                 tagHTML = `<div class="text-[9px] text-yellow-400 font-bold tracking-wider uppercase mt-2 italic">⚠️ เฝ้าติดตาม (ผลฝึก <= 60%)</div>`;
+               } else if (status.includes("จำหน่าย")) {
+                 cardStyle = "border-red-500/50 bg-red-500/5 hover:border-red-500";
+                 dotStyle = "bg-red-500 shadow-[0_0_10px_#ef4444]";
+                 titleStyle = "text-red-400";
+                 tagHTML = `<div class="text-[9px] text-red-400 font-bold tracking-wider uppercase mt-2 italic">🛑 ${status}: ${r[4]||'-'}</div>`;
+               } else if (status === "คัดออก") {
+                 cardStyle = "border-gray-800 bg-black/60 opacity-80";
+                 dotStyle = "bg-gray-600";
+                 titleStyle = "text-gray-400";
+                 tagHTML = `<div class="text-[9px] text-gray-500 font-bold tracking-wider uppercase mt-2 italic">❌ คัดออก: ${r[4]||'-'}</div>`;
+               }
+
+               return `<div class="p-6 glass rounded-[2.5rem] ${cardStyle} transition-all flex justify-between items-center group shadow-xl hover:bg-white/5">
+                  <div class="flex items-center gap-4">
+                    <div class="w-2.5 h-2.5 rounded-full ${dotStyle}"></div>
+                    <div>
+                      <h4 class="font-bold ${titleStyle} uppercase italic leading-none transition">${r[1]}</h4>
+                      <div class="text-[9px] text-gray-500 font-black tracking-[0.2em] uppercase mt-2">ID: ${r[0]} | ORIGIN: ${r[2]}</div>
+                      ${tagHTML}
+                    </div>
+                  </div>
+                  <button onclick="prepareTraineeUpdate(${i+1})" class="bg-yellow-500/10 text-yellow-500 px-4 py-2 rounded-xl text-[10px] font-black border border-yellow-500/20 uppercase transition hover:bg-yellow-500 hover:text-white">Edit</button>
+                 </div>`
+            }).join('') + `</div>`;
+        }
+      } 
+      else if (currentSheet === 'Physical_Test') {
+        btnGroup.innerHTML = `<button onclick="openGenericAddModal()" class="bg-blue-600 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg italic transition-all hover:bg-blue-500">➕ Add Assessment</button>`;
+        renderPhysicalSummary(data);
+        const phyList = data.Physical_Test ? data.Physical_Test.slice(1).map((r, i) => ({ data: r, originalIndex: i + 1 })).filter(item => {
+          const r = item.data;
+          return !keyword || (
+            r[0].toLowerCase().includes(keyword) ||
+            r[1].toLowerCase().includes(keyword) ||
+            (r[2] && r[2].toLowerCase().includes(keyword)) ||
+            r[3].toLowerCase().includes(keyword)
+          );
+        }) : [];
+
+        if (phyList.length === 0) {
+          container.innerHTML = `<p class="text-center opacity-30 py-20 font-black uppercase tracking-widest text-[10px]">--- ไม่พบข้อมูลทดสอบร่างกายที่ค้นหา ---</p>`;
+        } else {
+          container.innerHTML = `<div class="grid gap-3 animate-fadeIn">` + phyList.map(item => {
+               const r = item.data;
+               const i = item.originalIndex - 1;
+               let statusColor = "text-gray-500 border-gray-500/20 bg-gray-500/5";
+               let isDone = r[3] === "ทดสอบสำเร็จ";
+               if(r[3] === "กำลังเตรียมการ") statusColor = "text-orange-400 border-orange-500/20 font-bold bg-orange-500/10";
+               if(r[3] === "กำลังทดสอบ") statusColor = "text-yellow-400 border-yellow-500/20 font-black bg-yellow-500/10";
+               if(isDone) statusColor = "text-green-500 border-green-500/20 font-black bg-green-500/10";
+
+               return `<div class="p-5 glass border border-white/5 rounded-[1.5rem] flex justify-between items-center shadow-xl hover:bg-white/5 transition-all"><div><h4 class="text-base font-bold text-white uppercase italic tracking-tight">${r[1]||'Assessment'}</h4><p class="text-[9px] text-gray-500 font-black uppercase italic mb-2">📅 ${r[0]} | INSTR: ${r[2]||'-'}</p><span class="text-[10px] ${statusColor} uppercase tracking-widest border px-2 py-0.5 rounded-md">${r[3]||'Pending'}</span></div><button onclick="preparePhysicalUpdate(${i+1})" class="bg-yellow-500/10 text-yellow-500 px-5 py-3 rounded-2xl text-[10px] font-black border border-yellow-500/20 uppercase italic transition hover:bg-yellow-500/20 hover:text-white">Update</button></div>`;
+            }).join('') + `</div>`;
+        }
+      } 
+      else if (currentSheet === 'timeline') {
+          btnGroup.innerHTML = '';
+          let dateMap = {};
+          
+          if(data.Training_Log) {
+              data.Training_Log.slice(1).forEach((r, i) => {
+                  if(r[5] && r[5] !== "รอดำเนินการ") {
+                      const dStr = r[3] || "ไม่ระบุวันที่";
+                      const match = !keyword || (dStr.toLowerCase().includes(keyword) || r[1].toLowerCase().includes(keyword) || (r[2]&&r[2].toLowerCase().includes(keyword)) || r[5].toLowerCase().includes(keyword));
+                      if(match) {
+                          if(!dateMap[dStr]) dateMap[dStr] = { timestamp: parseDate(dStr), items: [] };
+                          dateMap[dStr].items.push({ type: 'training', index: i + 1, title: r[1], desc: r[2], status: r[5] });
+                      }
+                  }
+              });
+          }
+          
+          if(data.Physical_Test) {
+              data.Physical_Test.slice(1).forEach((r, i) => {
+                   if(r[3] && r[3] !== "รอดำเนินการ") {
+                      const dStr = r[0] || "ไม่ระบุวันที่";
+                      const match = !keyword || (dStr.toLowerCase().includes(keyword) || r[1].toLowerCase().includes(keyword) || (r[2]&&r[2].toLowerCase().includes(keyword)) || r[3].toLowerCase().includes(keyword));
+                      if(match) {
+                          if(!dateMap[dStr]) dateMap[dStr] = { timestamp: parseDate(dStr), items: [] };
+                          dateMap[dStr].items.push({ type: 'physical', index: i + 1, title: r[1] || 'Physical Assessment', desc: '', status: r[3] });
+                      }
+                   }
+              });
+          }
+
+          if(data.Daily_Log) {
+              data.Daily_Log.slice(1).forEach((r, i) => {
+                   const status = r[1];
+                   if(status && status !== "ยังไม่ได้รายงาน" && status !== "-") {
+                      const dStr = r[0] || "ไม่ระบุวันที่";
+                      let tLabel = `รายงานประจำวัน (DAY ${i+1})`;
+                      if(status === "ไม่มีการฝึก") tLabel = `งดการฝึก / ไม่มีกิจกรรม (DAY ${i+1})`;
+                      const match = !keyword || (dStr.toLowerCase().includes(keyword) || tLabel.toLowerCase().includes(keyword) || (r[2]&&r[2].toLowerCase().includes(keyword)) || status.toLowerCase().includes(keyword));
+                      if(match) {
+                          if(!dateMap[dStr]) dateMap[dStr] = { timestamp: parseDate(dStr), items: [] };
+                          dateMap[dStr].items.push({ type: 'daily', index: i + 1, title: tLabel, desc: r[2], status: status });
+                      }
+                   }
+              });
+          }
+          
+          const sortedDates = Object.keys(dateMap).sort((a,b) => dateMap[b].timestamp - dateMap[a].timestamp);
+          
+          if(sortedDates.length === 0) {
+              container.innerHTML = `<div class="text-center opacity-30 py-20 font-black uppercase tracking-widest text-[10px]">--- ไม่พบประวัติปฏิบัติการที่ค้นหา ---</div>`;
+          } else {
+              let html = `<div class="relative border-l-2 border-blue-900/50 ml-4 space-y-6 animate-fadeIn pb-10">`;
+              sortedDates.forEach(dateStr => {
+                  const group = dateMap[dateStr];
+                  
+                  html += `
+                  <div class="relative pl-6 group">
+                      <div class="absolute -left-[9px] top-4 w-4 h-4 rounded-full bg-cyan-500 shadow-[0_0_10px_currentColor] border-2 border-[#020617] transition-all group-hover:scale-125"></div>
+                      <div class="glass p-5 rounded-2xl border border-white/5 space-y-4 shadow-lg">
+                          <div class="border-b border-white/5 pb-3">
+                              <span class="text-xs text-cyan-400 font-black uppercase tracking-widest"><i class="fas fa-calendar-alt mr-2"></i> วันที่: ${dateStr}</span>
+                          </div>
+                          <div class="space-y-3">`;
+
+                  group.items.forEach(item => {
+                      let badgeColor = item.type === 'training' ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : (item.type === 'physical' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-red-500/20 text-red-400 border-red-500/30');
+                      let icon = item.type === 'training' ? '<i class="fas fa-bullseye"></i>' : (item.type === 'physical' ? '<i class="fas fa-heartbeat"></i>' : '<i class="fas fa-calendar-day"></i>');
+                      
+                      let editBtnAction = '';
+                      if (item.type === 'training') editBtnAction = `prepareTrainingUpdate(${item.index})`;
+                      else if (item.type === 'physical') editBtnAction = `preparePhysicalUpdate(${item.index})`;
+                      else editBtnAction = `openDailyReportModal(${item.index - 1})`;
+
+                      html += `
+                              <div class="p-3 bg-slate-950/40 rounded-xl border border-white/5 flex justify-between items-center">
+                                  <div>
+                                      <div class="flex items-center gap-2 mb-1">
+                                          <span class="px-2 py-0.5 rounded border ${badgeColor} text-[8px] font-black uppercase italic flex items-center gap-1">${icon} ${item.type}</span>
+                                          <h4 class="text-sm font-bold text-white uppercase italic tracking-tight">${item.title}</h4>
+                                      </div>
+                                      ${item.desc && item.desc !== '-' ? `<p class="text-[11px] text-amber-300 italic mt-1"><strong class="not-italic uppercase text-[9px] text-gray-500">${item.status === 'ไม่ปกติ' ? 'เหตุผลความผิดปกติ:' : 'หมายเหตุ:'}</strong> ${item.desc}</p>` : ''}
+                                      <div class="text-[10px] font-black uppercase mt-1 ${item.status.includes('สำเร็จ') || item.status === 'ปกติ' ? 'text-green-500' : (item.status === 'ไม่มีการฝึก' ? 'text-amber-400' : 'text-blue-400')}">${item.status}</div>
+                                  </div>
+                                  <button onclick="${editBtnAction}" class="bg-white/5 hover:bg-white/20 text-gray-300 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all shadow-md ml-3">
+                                      <i class="fas fa-edit mr-1"></i> Edit
+                                  </button>
+                              </div>`;
+                  });
+
+                  html += `</div></div></div>`;
+              });
+              html += `</div>`;
+              container.innerHTML = html;
+          }
+      }
+      else if (currentSheet === 'Daily_Log') {
+        btnGroup.innerHTML = `<button onclick="openGenericAddModal()" class="bg-blue-600 px-6 py-2.5 rounded-xl font-black uppercase text-[10px] shadow-lg italic transition-all hover:bg-blue-500">➕ ตั้งค่าจำนวนวันฝึก</button>`;
+        const logs = data.Daily_Log ? data.Daily_Log.slice(1).map((r, i) => ({ data: r, originalIndex: i })).filter(item => {
+          const r = item.data;
+          const dayStr = `day ${item.originalIndex + 1}`;
+          return !keyword || (
+            dayStr.includes(keyword) ||
+            r[0].toLowerCase().includes(keyword) ||
+            r[1].toLowerCase().includes(keyword) ||
+            (r[2] && r[2].toLowerCase().includes(keyword)) ||
+            (r[3] && r[3].toLowerCase().includes(keyword))
+          );
+        }) : [];
+
+        if (!logs || logs.length === 0) {
+          container.innerHTML = `<div class="text-center py-20 opacity-30 font-black uppercase tracking-widest text-[10px]">--- ไม่พบรายงานรายวันตามที่ค้นหา ---</div>`;
+        } else {
+          let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-fadeIn">`;
+          let isNextUnlocked = true;
+
+          logs.forEach(item => {
+            const r = item.data;
+            const i = item.originalIndex;
+            const dayNum = i + 1;
+            const status = r[1] || "ยังไม่ได้รายงาน";
+            const isReported = status !== "ยังไม่ได้รายงาน" && status !== "-";
+            const isUnlocked = isNextUnlocked;
+
+            let cardStyle = "border-white/5 opacity-50 cursor-not-allowed";
+            let statusBadge = `<span class="text-[9px] bg-gray-800 text-gray-500 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-lock mr-1"></i> LOCKED</span>`;
+
+            if (isReported) {
+              if (status === "ปกติ") {
+                cardStyle = "border-green-500/30 bg-green-500/5 hover:border-green-500/60 cursor-pointer shadow-[0_0_15px_rgba(34,197,94,0.1)]";
+                statusBadge = `<span class="text-[9px] bg-green-500/20 text-green-400 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-check mr-1"></i> ปกติ</span>`;
+              } else if (status === "ไม่มีการฝึก") {
+                cardStyle = "border-amber-500/30 bg-amber-500/5 hover:border-amber-500/60 cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.1)]";
+                statusBadge = `<span class="text-[9px] bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-ban mr-1"></i> ไม่มีฝึก</span>`;
+              } else {
+                cardStyle = "border-red-500/30 bg-red-500/5 hover:border-red-500/60 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.1)]";
+                statusBadge = `<span class="text-[9px] bg-red-500/20 text-red-400 px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> ไม่ปกติ</span>`;
+              }
+            } else if (isUnlocked) {
+              cardStyle = "border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 cursor-pointer animate-pulse shadow-[0_0_20px_rgba(59,130,246,0.2)]";
+              statusBadge = `<span class="text-[9px] bg-blue-500 text-white px-2.5 py-1 rounded-lg font-black uppercase"><i class="fas fa-edit mr-1"></i> รอกรอกข้อมูล</span>`;
+              isNextUnlocked = false;
+            } else {
+              isNextUnlocked = false;
+            }
+
+            html += `
+              <div onclick="${isUnlocked || isReported ? `openDailyReportModal(${i})` : ''}" class="p-5 glass rounded-2xl border ${cardStyle} transition-all relative overflow-hidden group">
+                <div class="flex justify-between items-start mb-3">
+                  <div>
+                    <span class="text-[10px] font-black text-blue-400 tracking-widest uppercase">DAY ${dayNum < 10 ? '0' + dayNum : dayNum}</span>
+                    <h4 class="text-sm font-bold text-white uppercase italic mt-0.5"><i class="fas fa-calendar-day mr-1 text-xs text-blue-400"></i> ${r[0] || 'รอกำหนดวันที่'}</h4>
+                  </div>
+                  ${statusBadge}
+                </div>
+                ${r[3] ? `<div class="text-[9px] text-gray-500 font-bold uppercase mt-3 tracking-wider"><i class="fas fa-user-circle mr-1"></i> ${r[3]}</div>` : ''}
+              </div>
+            `;
+          });
+
+          container.innerHTML = html + `</div>`;
+        }
+      }
+    }
+
+    function setModalReadOnly(isReadOnly) {
+      isReadOnlyMode = isReadOnly;
+      const submitBtn = document.getElementById('modal-submit-btn');
+      const formFields = document.getElementById('form-fields');
+      const inputs = formFields.querySelectorAll('input, select, textarea');
+
+      if (isReadOnly) {
+        submitBtn.classList.add('hidden');
+        inputs.forEach(el => {
+          el.disabled = true;
+          el.classList.add('f-disabled');
+        });
+      } else {
+        submitBtn.classList.remove('hidden');
+        inputs.forEach(el => {
+          el.disabled = false;
+          el.classList.remove('f-disabled');
+        });
+      }
+    }
+
+    function openAddCategoryModal() {
+      isStatusBroadcast = false; editMode = false;
+      const f = document.getElementById('form-fields');
+      document.getElementById('form-title').innerText = "เพิ่มหมวดหมู่ใหม่";
+      f.innerHTML = `
+        <div class="mb-4">
+          <label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อหมวดหมู่ (CATEGORY NAME)</label>
+          <input id="new_cat_name" class="f-in" placeholder="เช่น ๑.คณะกรรมการดำเนินงาน หรือ ฝึกประจำสัปดาห์">
+        </div>
+      `;
+      setModalReadOnly(false);
+      document.getElementById('form-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('new_cat_name')?.focus(), 150);
+    }
+
+    function openAddItemToCategoryModal(catName) {
+      isStatusBroadcast = false; editMode = false;
+      targetCategoryForAdd = catName;
+      const f = document.getElementById('form-fields');
+      document.getElementById('form-title').innerText = `เพิ่มรายการใน (${catName})`;
+
+      if (currentSheet === 'Staff_Committee') {
+        f.innerHTML = `
+          <input id="f1" class="f-in" placeholder="ชื่อ-นามสกุล">
+          <input id="f2" class="f-in" placeholder="ยศ">
+          <input id="f3" class="f-in" placeholder="ตำแหน่ง">
+        `;
+      } else if (currentSheet === 'Training_Log') {
+        f.innerHTML = `
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หัวข้อการฝึก</label><input id="f1" class="f-in" placeholder="หัวข้อการฝึก"></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">รายละเอียดการฝึก</label><textarea id="f_desc" class="f-in custom-scrollbar" rows="3" placeholder="ระบุรายละเอียด..."></textarea></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี เช่น 19/08/2026)</label><input type="text" id="f2" class="f-in" placeholder="เช่น 19/08/2026"></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่เจ้าหน้าที่ผู้ฝึก</label><select id="f3_cat" class="f-in" onchange="updateInstructorList('f3_cat', 'f3')">${generateStaffCategoryOptions()}</select></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้ฝึก</label><select id="f3" class="f-in"></select></div>
+        `;
+        setTimeout(() => updateInstructorList('f3_cat', 'f3'), 50);
+      }
+      setModalReadOnly(false);
+      document.getElementById('form-modal').classList.remove('hidden');
+      setTimeout(() => f.querySelector('input')?.focus(), 150);
+    }
+
+    function prepareTrainingUpdate(index) {
+       const row = allDataCache.Training_Log[index]; 
+       editMode = true; isStatusBroadcast = false; editingIndex = index;
+       const currentInstructor = row[4] || ""; 
+       const currentCat = findStaffCategoryByName(currentInstructor);
+       const passedList = row[6] ? row[6].split(',').map(x => x.trim()) : [];
+       const trainees = allDataCache.Trainees ? allDataCache.Trainees.slice(1).filter(t => !((t[3] || '').includes("จำหน่าย")) && t[3] !== "คัดออก") : []; 
+
+       const f = document.getElementById('form-fields');
+       document.getElementById('form-title').innerText = "EDIT TRAINING LOG";
+       
+       let traineeHTML = `<div id="trainee_check_list" class="mt-4 hidden animate-fadeIn border-t border-white/10 pt-4"><div class="flex justify-between items-center mb-3"><h4 class="text-xs font-bold text-green-400 uppercase italic">Selected Passed Trainees</h4><button type="button" onclick="toggleAllTrainees('trainee_check_list', this)" data-all="false" class="ml-auto text-[10px] text-blue-400 font-bold underline cursor-pointer">SELECT ALL</button></div><div class="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-checkbox custom-scrollbar">`;
+       trainees.forEach(t => {
+           const isChecked = passedList.includes(t[0]) ? 'checked' : '';
+           traineeHTML += `<label class="cursor-pointer relative"><input type="checkbox" class="peer sr-only" value="${t[0]}" ${isChecked}><div class="p-3 bg-white/5 border border-white/10 rounded-xl peer-checked:border-green-500 peer-checked:bg-green-500/20 transition flex items-center gap-2"><div class="w-4 h-4 rounded border border-white/30 flex items-center justify-center peer-checked:bg-green-500 peer-checked:border-green-500 text-[10px]"></div><span class="text-[10px] font-bold text-gray-300 peer-checked:text-green-400 uppercase">${t[1]}</span></div></label>`;
+       });
+       traineeHTML += `</div></div>`;
+
+       f.innerHTML = `
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่การฝึก</label><input id="edit_cat" class="f-in" value="${row[0]||''}"></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">หัวข้อการฝึก</label><input id="edit_topic" class="f-in" value="${row[1]||''}"></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">รายละเอียดการฝึก</label><textarea id="edit_desc" class="f-in custom-scrollbar" rows="3">${row[2]||''}</textarea></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="edit_date" class="f-in" value="${row[3]||''}" placeholder="19/08/2026"></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่เจ้าหน้าที่ผู้ฝึก</label><select id="edit_instr_cat" class="f-in" onchange="updateInstructorList('edit_instr_cat', 'edit_instr')">${generateStaffCategoryOptions(currentCat)}</select></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้ฝึก</label><select id="edit_instr" class="f-in"></select></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะ</label><select id="edit_status" class="f-in" onchange="toggleTraineeList('trainee_check_list', 'edit_status')"><option value="รอดำเนินการ" ${row[5]==='รอดำเนินการ'?'selected':''}>รอดำเนินการ</option><option value="กำลังเตรียมการ" ${row[5]==='กำลังเตรียมการ'?'selected':''}>กำลังเตรียมการ</option><option value="กำลังดำเนินการ" ${row[5]==='กำลังดำเนินการ'?'selected':''}>กำลังดำเนินการ</option><option value="ฝึกสำเร็จ" ${row[5]==='ฝึกสำเร็จ'?'selected':''}>ฝึกสำเร็จ</option></select></div>${traineeHTML}`;
+       
+       updateInstructorList('edit_instr_cat', 'edit_instr', currentInstructor);
+       toggleTraineeList('trainee_check_list', 'edit_status');
+       setModalReadOnly(false);
+       document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function preparePhysicalUpdate(index) {
+       const row = allDataCache.Physical_Test[index];
+       editMode = true; isStatusBroadcast = false; editingIndex = index;
+       const currentInstructor = row[2] || "";
+       const currentCat = findStaffCategoryByName(currentInstructor);
+       const passedList = row[4] ? row[4].split(',').map(x => x.trim()) : [];
+       const trainees = allDataCache.Trainees ? allDataCache.Trainees.slice(1).filter(t => !((t[3] || '').includes("จำหน่าย")) && t[3] !== "คัดออก") : [];
+
+       const f = document.getElementById('form-fields');
+       document.getElementById('form-title').innerText = "EDIT PHYSICAL TEST";
+
+       let traineeHTML = `<div id="phy_trainee_list" class="mt-4 hidden animate-fadeIn border-t border-white/10 pt-4"><div class="flex justify-between items-center mb-3"><h4 class="text-xs font-bold text-green-400 uppercase italic">Selected Passed Trainees</h4><button type="button" onclick="toggleAllTrainees('phy_trainee_list', this)" data-all="false" class="ml-auto text-[10px] text-blue-400 font-bold underline cursor-pointer">SELECT ALL</button></div><div class="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-checkbox custom-scrollbar">`;
+       trainees.forEach(t => {
+           const isChecked = passedList.includes(t[0]) ? 'checked' : '';
+           traineeHTML += `<label class="cursor-pointer relative"><input type="checkbox" class="peer sr-only" value="${t[0]}" ${isChecked}><div class="p-3 bg-white/5 border border-white/10 rounded-xl peer-checked:border-green-500 peer-checked:bg-green-500/20 transition flex items-center gap-2"><div class="w-4 h-4 rounded border border-white/30 flex items-center justify-center peer-checked:bg-green-500 peer-checked:border-green-500 text-[10px]"></div><span class="text-[10px] font-bold text-gray-300 peer-checked:text-green-400 uppercase">${t[1]}</span></div></label>`;
+       });
+       traineeHTML += `</div></div>`;
+
+       f.innerHTML = `
+           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="phy_date" class="f-in" value="${row[0]||''}" placeholder="19/08/2026"></div>
+           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อการทดสอบ</label><input type="text" id="phy_name" class="f-in" value="${row[1]}"></div>
+           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่ผู้คุมสอบ</label><select id="phy_instr_cat" class="f-in" onchange="updateInstructorList('phy_instr_cat', 'phy_instr')">${generateStaffCategoryOptions(currentCat)}</select></div>
+           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้คุมสอบ</label><select id="phy_instr" class="f-in"></select></div>
+           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะ</label><select id="phy_status" class="f-in" onchange="toggleTraineeList('phy_trainee_list', 'phy_status')"><option value="รอดำเนินการ" ${row[3]==='รอดำเนินการ'?'selected':''}>รอดำเนินการ</option><option value="กำลังเตรียมการ" ${row[3]==='กำลังเตรียมการ'?'selected':''}>กำลังเตรียมการ</option><option value="กำลังทดสอบ" ${row[3]==='กำลังทดสอบ'?'selected':''}>กำลังทดสอบ</option><option value="ทดสอบสำเร็จ" ${row[3]==='ทดสอบสำเร็จ'?'selected':''}>ทดสอบสำเร็จ</option></select></div>
+           ${traineeHTML}`;
+
+       updateInstructorList('phy_instr_cat', 'phy_instr', currentInstructor);
+       toggleTraineeList('phy_trainee_list', 'phy_status');
+       setModalReadOnly(false);
+       document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function openDailyReportModal(dayIndex) {
+      const dailyLogs = allDataCache.Daily_Log ? allDataCache.Daily_Log.slice(1) : [];
+      if (dayIndex > 0) {
+        const prevLog = dailyLogs[dayIndex - 1];
+        if (!prevLog || !prevLog[1] || prevLog[1] === "ยังไม่ได้รายงาน" || prevLog[1] === "-") {
+          showToast("กรุณารายงานข้อมูลของวันก่อนหน้าให้เรียบร้อยก่อน", "error");
+          return;
+        }
+      }
+
+      const row = dailyLogs[dayIndex] || [];
+      isStatusBroadcast = false; editMode = true; editingIndex = dayIndex + 1;
+
+      const f = document.getElementById('form-fields');
+      document.getElementById('form-title').innerText = `DAILY REPORT: DAY ${dayIndex + 1}`;
+
+      const currentDate = row[0] || "";
+      const currentStatus = row[1] === "ยังไม่ได้รายงาน" ? "ปกติ" : (row[1] || "ปกติ");
+      const currentDesc = row[2] || "";
+      const currentReporter = row[3] || "";
+
+      f.innerHTML = `
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="daily_date" class="f-in" value="${currentDate}" placeholder="19/08/2026"></div>
+        <div class="mb-4">
+          <label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะการฝึกวันนี้</label>
+          <select id="daily_status" class="f-in">
+            <option value="ปกติ" ${currentStatus === 'ปกติ' ? 'selected' : ''}>🟢 ฝึกปกติ</option>
+            <option value="ไม่มีการฝึก" ${currentStatus === 'ไม่มีการฝึก' ? 'selected' : ''}>🟡 ไม่มีกิจกรรมการฝึก / งดฝึก</option>
+            <option value="ไม่ปกติ" ${currentStatus === 'ไม่ปกติ' ? 'selected' : ''}>🔴 เหตุการณ์ไม่ปกติ / ฉุกเฉิน</option>
+          </select>
+        </div>
+        <div class="mb-4">
+          <label class="text-[10px] uppercase font-bold text-cyan-400 mb-1 block">หมายเหตุ / รายละเอียด / เหตุผลความผิดปกติ</label>
+          <textarea id="daily_desc" class="f-in border-cyan-500/30 text-cyan-200 custom-scrollbar" rows="3" placeholder="ระบุหมายเหตุ หรือเหตุผลความผิดปกติ (กรณีไม่ปกติ)...">${currentDesc}</textarea>
+        </div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ผู้รายงาน</label><input type="text" id="daily_reporter" class="f-in" value="${currentReporter}" placeholder="ชื่อผู้รายงาน..."></div>
+      `;
+
+      setModalReadOnly(false);
+      document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function prepareStaffUpdate(index) {
+        editMode = true; isStatusBroadcast = false; editingIndex = index;
+        const row = allDataCache.Staff_Committee[index];
+        const f = document.getElementById('form-fields');
+        document.getElementById('form-title').innerText = "EDIT PERSONNEL";
+        f.innerHTML = `<div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่</label><input id="st_cat" class="f-in" value="${row[0]||''}"></div><div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อ-นามสกุล</label><input id="st_name" class="f-in" value="${row[1]}"></div><div class="grid grid-cols-2 gap-3 mb-4"><div><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ยศ</label><input id="st_rank" class="f-in" value="${row[2]}"></div><div><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ตำแหน่ง</label><input id="st_pos" class="f-in" value="${row[3]}"></div></div><div class="mb-4"><label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะ</label><select id="st_status" class="f-in" onchange="toggleStaffReason()"><option value="ปกติ" ${row[4]!=='จำหน่าย'?'selected':''}>ปกติ</option><option value="จำหน่าย" ${row[4]==='จำหน่าย'?'selected':''}>จำหน่าย</option></select></div><div id="st_reason_box" class="${row[4]==='จำหน่าย'?'':'hidden'} mb-4 animate-fadeIn"><label class="text-[10px] uppercase font-bold text-red-500 mb-1 block">เหตุผลการจำหน่าย</label><textarea id="st_reason" class="f-in border-red-500/30 text-red-200 custom-scrollbar" rows="2">${row[5]||''}</textarea></div>`;
+        setModalReadOnly(false);
+        document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function prepareTraineeUpdate(index) {
+        editMode = true; isStatusBroadcast = false; editingIndex = index;
+        const row = allDataCache.Trainees[index]; 
+        const autoStatus = autoCalculateTraineeStatus(row[0]);
+        const status = row[3] || autoStatus;
+        const f = document.getElementById('form-fields');
+        document.getElementById('form-title').innerText = "EDIT TRAINEE";
+        
+        f.innerHTML = `
+          <div class="mb-4 opacity-50"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">รหัสประจำตัว (ID)</label><input class="f-in f-disabled" value="${row[0]}" disabled></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อ-นามสกุล</label><input id="tr_name" class="f-in" value="${row[1]||''}"></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ภูมิลำเนา</label><input id="tr_origin" class="f-in" value="${row[2]||''}"></div>
+          <div class="mb-4">
+            <div class="flex justify-between items-center mb-1"><label class="text-[10px] uppercase font-bold text-yellow-500 block">สถานะ</label><span class="text-[9px] text-blue-400 font-bold uppercase italic cursor-pointer underline" onclick="applyAutoStatus('${autoStatus}')">คำนวณอัตโนมัติ (${autoStatus})</span></div>
+            <select id="tr_status" class="f-in" onchange="toggleTraineeReason()">
+              <option value="ปกติ" ${status==='ปกติ'?'selected':''}>🟢 ปกติ</option>
+              <option value="เฝ้าติดตาม" ${status==='เฝ้าติดตาม'||status==='เฝ้าระวัง'?'selected':''}>🟡 เฝ้าติดตาม</option>
+              <option value="จำหน่าย (ต่ำกว่าเกณฑ์)" ${status==='จำหน่าย (ต่ำกว่าเกณฑ์)'?'selected':''}>🔴 จำหน่าย (ผลฝึกต่ำ)</option>
+              <option value="จำหน่าย" ${status==='จำหน่าย'?'selected':''}>🔴 จำหน่าย (อื่นๆ)</option>
+              <option value="คัดออก" ${status==='คัดออก'?'selected':''}>⚫ คัดออก</option>
+            </select>
+          </div>
+          <div id="tr_reason_box" class="${status.includes('จำหน่าย')||status==='คัดออก'?'':'hidden'} mb-4 animate-fadeIn">
+            <label class="text-[10px] uppercase font-bold text-red-500 mb-1 block">เหตุผล</label>
+            <textarea id="tr_reason" class="f-in border-red-500/30 text-red-200 custom-scrollbar" rows="2">${row[4]||''}</textarea>
+          </div>`;
+          
+        setModalReadOnly(false);
+        document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function applyAutoStatus(autoStatus) {
+      const select = document.getElementById('tr_status');
+      if (select) { select.value = autoStatus; toggleTraineeReason(); showToast(`ปรับสถานะอัตโนมัติเป็น: ${autoStatus}`); }
+    }
+
+    function openGenericAddModal() {
+      isStatusBroadcast = false; editMode = false;
+      const f = document.getElementById('form-fields'); f.innerHTML = '';
+      document.getElementById('form-title').innerText = "NEW RECORD";
+
+      if(currentSheet==='Daily_Log') {
+          const today = new Date();
+          const dateStr = `${today.getDate().toString().padStart(2,'0')}/${(today.getMonth()+1).toString().padStart(2,'0')}/${today.getFullYear()}`;
+          f.innerHTML = `
+            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">จำนวนวันฝึกทั้งหมด</label><input type="number" id="setup_days" class="f-in text-xl font-bold text-center" min="1" value="10"></div>
+            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่เริ่มต้น (วัน เดือน ปี เช่น 19/08/2026)</label><input type="text" id="setup_start_date" class="f-in" value="${dateStr}"></div>
+          `;
+      }
+      else if(currentSheet==='Trainees') {
+          f.innerHTML = `<input id="f0" class="f-in" placeholder="ID"><input id="f1" class="f-in" placeholder="ชื่อ"><input id="f2" class="f-in" placeholder="สังกัด">`;
+      }
+      else if(currentSheet==='Physical_Test') {
+          const nextCount = allDataCache && allDataCache.Physical_Test ? allDataCache.Physical_Test.length : 1; 
+          const today = new Date();
+          const dateStr = `${today.getDate().toString().padStart(2,'0')}/${(today.getMonth()+1).toString().padStart(2,'0')}/${today.getFullYear()}`;
+          f.innerHTML = `
+            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="f0" class="f-in" value="${dateStr}" placeholder="19/08/2026"></div>
+            <div class="p-4 bg-white/5 rounded-xl border border-white/10 text-center mb-3"><p class="text-[10px] text-gray-400 font-bold uppercase">System will generate:</p><h3 class="text-xl font-bold text-blue-400 mt-1">ทดสอบร่างกายครั้งที่ ${nextCount}</h3></div>
+            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่ผู้คุมสอบ</label><select id="f2_cat" class="f-in" onchange="updateInstructorList('f2_cat', 'f2')">${generateStaffCategoryOptions()}</select></div>
+            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้คุมสอบ</label><select id="f2" class="f-in"></select></div>
+          `;
+          setTimeout(() => updateInstructorList('f2_cat', 'f2'), 50);
+      }
+      setModalReadOnly(false);
+      document.getElementById('form-modal').classList.remove('hidden');
+      setTimeout(() => f.querySelector('input, select')?.focus(), 150);
+    }
+
+    function submitForm() {
+      if (isSubmitting || isReadOnlyMode) return;
+      isSubmitting = true;
+      const saveBtn = document.getElementById('modal-submit-btn');
+      const originalBtnText = saveBtn.innerText;
+      saveBtn.innerText = "SAVING..."; saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      const resetState = () => {
+          isSubmitting = false; saveBtn.innerText = originalBtnText; saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      };
+
+      if (isStatusBroadcast) {
+          const lvl = document.getElementById('st_level').value;
+          const msg = document.getElementById('st_msg').value;
+
+          fetch(GAS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'updateCenterStatus', status: lvl, message: msg })
+          })
+          .then(res => res.json())
+          .then(res => {
+            resetState(); showToast(res.message); closeModal('form-modal'); updateAdminStatusBox([lvl, msg]); syncDatabase();
+          }).catch(err => { resetState(); showToast("Error: " + err, "error"); });
+          return;
+      }
+
+      let d;
+
+      const newCatInput = document.getElementById('new_cat_name');
+      if (newCatInput && !editMode) {
+          const catName = newCatInput.value.trim();
+          if (!catName) { showToast("กรุณากรอกชื่อหมวดหมู่", "error"); resetState(); return; }
+          if (currentSheet === 'Staff_Committee') d = [catName, "", "", "", "ปกติ", ""];
+          else if (currentSheet === 'Training_Log') d = [catName, "", "", "", "", "รอดำเนินการ", ""];
+          
+          sendSaveRequest(currentSheet, d, null, resetState, "สร้างหมวดหมู่ใหม่สำเร็จ");
+          return;
+      }
+      
+      if (editMode && currentSheet === 'Trainees' && editingIndex !== null) {
+          const row = allDataCache.Trainees[editingIndex];
+          const status = document.getElementById('tr_status').value;
+          const reason = (status.includes('จำหน่าย') || status === 'คัดออก') ? document.getElementById('tr_reason').value : "";
+          d = [row[0], document.getElementById('tr_name').value, document.getElementById('tr_origin').value, status, reason];
+      }
+      else if (editMode && currentSheet === 'Staff_Committee' && editingIndex !== null) {
+          const status = document.getElementById('st_status').value;
+          const reason = status === 'จำหน่าย' ? document.getElementById('st_reason').value : "";
+          d = [document.getElementById('st_cat').value, document.getElementById('st_name').value, document.getElementById('st_rank').value, document.getElementById('st_pos').value, status, reason];
+      }
+      else if (editMode && currentSheet === 'Training_Log' && editingIndex !== null) {
+          const newStatus = document.getElementById('edit_status').value;
+          let passedListString = "";
+          if (newStatus === 'ฝึกสำเร็จ') {
+             const checkboxes = document.querySelectorAll('#trainee_check_list input[type="checkbox"]:checked');
+             const ids = Array.from(checkboxes).map(cb => cb.value);
+             passedListString = ids.join(', ');
+          }
+          d = [ document.getElementById('edit_cat').value, document.getElementById('edit_topic').value, document.getElementById('edit_desc').value, document.getElementById('edit_date').value, document.getElementById('edit_instr').value, newStatus, passedListString ];
+      }
+      else if (editMode && currentSheet === 'Physical_Test' && editingIndex !== null) {
+          const newStatus = document.getElementById('phy_status').value;
+          let passedListString = "";
+          if (newStatus === 'ทดสอบสำเร็จ') {
+             const checkboxes = document.querySelectorAll('#phy_trainee_list input[type="checkbox"]:checked');
+             const ids = Array.from(checkboxes).map(cb => cb.value);
+             passedListString = ids.join(', ');
+          }
+          d = [document.getElementById('phy_date').value, document.getElementById('phy_name').value, document.getElementById('phy_instr').value, newStatus, passedListString];
+      }
+      else if (editMode && currentSheet === 'Daily_Log' && editingIndex !== null) {
+          const status = document.getElementById('daily_status').value;
+          const desc = document.getElementById('daily_desc').value.trim() || "-";
+          d = [ document.getElementById('daily_date').value, status, desc, document.getElementById('daily_reporter').value ];
+      }
+      else if (!editMode && currentSheet === 'Daily_Log') {
+          const totalDays = parseInt(document.getElementById('setup_days').value) || 1;
+          const startDateVal = document.getElementById('setup_start_date').value;
+          let parts = startDateVal.split('/');
+          let startDate = new Date();
+          if (parts.length === 3) startDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          
+          let promises = [];
+          for(let i = 0; i < totalDays; i++) {
+             let dDate = new Date(startDate);
+             dDate.setDate(startDate.getDate() + i);
+             let dateStr = `${dDate.getDate().toString().padStart(2,'0')}/${(dDate.getMonth()+1).toString().padStart(2,'0')}/${dDate.getFullYear()}`;
+             let rowData = [dateStr, "ยังไม่ได้รายงาน", "-", ""];
+             
+             promises.push(
+               fetch(GAS_API_URL, {
+                 method: 'POST',
+                 body: JSON.stringify({ action: 'saveData', sheetName: 'Daily_Log', rowData: rowData, rowIndex: null })
+               })
+             );
+          }
+
+          Promise.all(promises).then(() => {
+            resetState();
+            showToast(`สร้างกำหนดการฝึก ${totalDays} วันเรียบร้อยแล้ว`);
+            closeModal('form-modal');
+            syncDatabase(() => loadData());
+          }).catch(err => { resetState(); showToast("Error: " + err, "error"); });
+          return;
+      }
+      else {
+          let raw = [document.getElementById('f0')?.value, document.getElementById('f1')?.value, document.getElementById('f2')?.value, document.getElementById('f3')?.value];
+          if(currentSheet==='Trainees') d = [raw[0], raw[1], raw[2], "ปกติ", ""];
+          else if(currentSheet==='Training_Log') {
+              const descVal = document.getElementById('f_desc')?.value || "";
+              d = [targetCategoryForAdd||"ทั่วไป", raw[1], descVal, raw[2], raw[3], "รอดำเนินการ", ""];
+          }
+          else if(currentSheet==='Physical_Test') {
+              const nextCount = allDataCache && allDataCache.Physical_Test ? allDataCache.Physical_Test.length : 1; 
+              d = [raw[0], `ทดสอบร่างกายครั้งที่ ${nextCount}`, raw[2], "รอดำเนินการ", ""];
+          }
+          else if(currentSheet==='Staff_Committee') d = [targetCategoryForAdd||"ทั่วไป", raw[1], raw[2], raw[3], "ปกติ", ""];
+          else d = raw;
+      }
+
+      const rowIndexToSend = (editMode && editingIndex !== null) ? editingIndex : null;
+      sendSaveRequest(currentSheet, d, rowIndexToSend, resetState);
+    }
+
+    function sendSaveRequest(sheetName, rowData, rowIndex, resetStateFunc, customSuccessMsg) {
+      fetch(GAS_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'saveData', sheetName: sheetName, rowData: rowData, rowIndex: rowIndex })
+      })
+      .then(res => res.json())
+      .then(res => {
+        resetStateFunc();
+        showToast(customSuccessMsg || res.message);
+        closeModal('form-modal');
+        syncDatabase(() => loadData());
+      }).catch(err => { resetStateFunc(); showToast("Error: " + err, "error"); });
+    }
+
+    function changePage(pageId, btn) {
+      if(btn) { document.querySelectorAll('.nav-btn-admin').forEach(b => b.classList.remove('active-nav')); btn.classList.add('active-nav'); }
+      currentSheet = (pageId === 'trainee') ? 'Trainees' : (pageId === 'training' ? 'Training_Log' : (pageId === 'staff' ? 'Staff_Committee' : (pageId === 'physical' ? 'Physical_Test' : (pageId === 'timeline' ? 'timeline' : 'Daily_Log'))));
+      document.getElementById('admin-page-title').innerText = pageId.toUpperCase();
+      document.getElementById('summary-panel').classList.add('hidden');
+      document.getElementById('admin-page-search-input').value = '';
+      loadData();
+    }
+
+    function toggleTraineeReason() {
+        const s = document.getElementById('tr_status').value;
+        const box = document.getElementById('tr_reason_box');
+        if(s.includes('จำหน่าย') || s === 'คัดออก') box.classList.remove('hidden'); else box.classList.add('hidden');
+    }
+
+    function toggleStaffReason() {
+        const s = document.getElementById('st_status').value;
+        const box = document.getElementById('st_reason_box');
+        if(s === 'จำหน่าย') box.classList.remove('hidden'); else box.classList.add('hidden');
+    }
+
+    function toggleTraineeList(elementId = 'trainee_check_list', selectId = 'edit_status') {
+      const status = document.getElementById(selectId).value;
+      const list = document.getElementById(elementId);
+      if (status === 'ฝึกสำเร็จ' || status === 'ทดสอบสำเร็จ') list.classList.remove('hidden'); else list.classList.add('hidden');
+    }
+
+    function toggleAllTrainees(containerId, btn) {
+      if (isReadOnlyMode) return;
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+      const isCurrentlyAll = btn.getAttribute('data-all') === 'true';
+      checkboxes.forEach(cb => { cb.checked = !isCurrentlyAll; });
+      if (!isCurrentlyAll) {
+        btn.innerText = "DESELECT ALL"; btn.setAttribute('data-all', 'true'); btn.className = "ml-auto text-[10px] text-red-400 font-bold underline cursor-pointer hover:text-red-300 transition";
+      } else {
+        btn.innerText = "SELECT ALL"; btn.setAttribute('data-all', 'false'); btn.className = "ml-auto text-[10px] text-blue-400 font-bold underline cursor-pointer hover:text-blue-300 transition";
+      }
+    }
+
+    function checkAdminLogin() {
+      const u = document.getElementById('admin-user').value, p = document.getElementById('admin-pass').value;
+      if (u === "11" && p === "2588") { document.getElementById('login-overlay').classList.add('hidden'); document.getElementById('admin-main-content').classList.remove('hidden'); showToast("Access Granted"); changePage('training'); }
+      else { showToast("Access Denied", "error"); document.getElementById('admin-pass').value = ""; }
+    }
+
+    function logout() { window.location.href = "index.html"; }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    function showToast(m, t='success') {
+      const c = document.getElementById('toast-container');
+      const i = document.createElement('div');
+      i.className = `toast-item ${t==='success'?'toast-success':'toast-error'}`;
+      i.innerHTML = `<i class="fas ${t==='success'?'fa-check-circle':'fa-exclamation-triangle'}"></i><div><div class="text-[10px] font-black opacity-60">System</div><div class="text-sm font-bold">${m}</div></div>`;
+      c.appendChild(i); setTimeout(() => i.remove(), 4000);
+    }
+
+    function openStatusModal() {
+        isStatusBroadcast = true; editMode = false;
+        const f = document.getElementById('form-fields');
+        document.getElementById('form-title').innerText = "SYSTEM BROADCAST";
+        const currentTitle = document.getElementById('s-title-admin').innerText;
+        const currentDesc = document.getElementById('s-desc-admin').innerText;
+
+        f.innerHTML = `<div class="mb-4"><label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">ระดับสถานการณ์</label><select id="st_level" class="f-in"><option value="ปกติ" ${currentTitle === 'ปกติ' ? 'selected' : ''}>🟢 ปกติ</option><option value="ไม่ปกติ" ${currentTitle === 'ไม่ปกติ' ? 'selected' : ''}>🔴 ฉุกเฉิน</option><option value="หยุดฝึก" ${currentTitle === 'หยุดฝึก' ? 'selected' : ''}>⚫ หยุดฝึก</option></select></div><div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ข้อความประกาศ</label><textarea id="st_msg" class="f-in custom-scrollbar" rows="3">${currentDesc === '-' ? '' : currentDesc}</textarea></div>`;
+        setModalReadOnly(false);
+        document.getElementById('form-modal').classList.remove('hidden');
+    }
+
+    function updateAdminStatusBox(sd) {
+      const b = document.getElementById('status-box-admin'), d = sd || ["ปกติ", "-", ""];
+      document.getElementById('s-title-admin').innerText = d[0]; document.getElementById('s-desc-admin').innerText = d[1];
+      if (d[0] === "ปกติ") b.className = "p-6 rounded-[2rem] border-2 border-green-500/40 bg-green-500/5 text-green-500 shadow-xl italic font-black";
+      else if (d[0] === "หยุดฝึก") b.className = "p-6 rounded-[2rem] border-2 border-gray-600 bg-black text-gray-300 shadow-xl italic font-black";
+      else b.className = "p-6 rounded-[2rem] border-2 border-red-500/40 bg-red-500/5 text-red-500 shadow-xl italic font-black animate-pulse";
+    }
+
+    function renderPhysicalSummary(data) {
+      const sum = document.getElementById('summary-panel');
+      if (!data || !data.Trainees || !data.Physical_Test) return;
+      const totalT = data.Trainees.slice(1).filter(t => !((t[3] || '').includes("จำหน่าย")) && t[3] !== "คัดออก").length;
+      let pAll = 0; 
+      data.Physical_Test.slice(1).forEach(p => { 
+          if(p[3]==='ทดสอบสำเร็จ' && p[4]) {
+              const passedIDs = p[4].split(',').map(x=>x.trim());
+              const validPassed = passedIDs.filter(id => {
+                  const trainee = data.Trainees.find(t => t[0] === id);
+                  return trainee && !((trainee[3] || '').includes("จำหน่าย")) && trainee[3] !== "คัดออก";
+              });
+              pAll += validPassed.length;
+          }
+      });
+      const completedTests = data.Physical_Test.slice(1).filter(x => x[3] === 'ทดสอบสำเร็จ').length;
+      const failTotal = (completedTests * totalT) - pAll;
+      sum.innerHTML = `<div class="p-6 bg-blue-600/5 border border-blue-500/20 rounded-[2rem] text-center shadow-xl"><div class="text-[10px] font-black text-blue-500/60 uppercase mb-1 tracking-widest italic">Total Phases</div><div class="text-3xl font-black text-white italic tracking-tighter">${completedTests} / 20</div></div><div class="p-6 bg-green-600/5 border border-green-500/20 rounded-[2rem] text-center shadow-xl"><div class="text-[10px] font-black text-green-500/60 uppercase mb-1 tracking-widest italic">Passed Total</div><div class="text-3xl font-black text-white italic tracking-tighter">${pAll}</div></div><div class="p-6 bg-red-600/5 border border-red-500/20 rounded-[2rem] text-center shadow-xl"><div class="text-[10px] font-black text-red-500/60 uppercase mb-1 tracking-widest italic">Failed Total</div><div class="text-3xl font-black text-white italic tracking-tighter">${failTotal < 0 ? 0 : failTotal}</div></div>`;
+      sum.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

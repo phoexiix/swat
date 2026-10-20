@@ -153,21 +153,47 @@
       }
     });
 
-    window.onload = () => { syncDatabase(); };
+    // Poll without overlapping requests or replacing an open editing form.
+    let adminSyncInProgress = false;
+    let adminRefreshPending = false;
+    window.onload = () => {
+      syncDatabase();
+      setInterval(() => syncDatabase(), 5000);
+    };
 
-    function syncDatabase(callback) {
-      fetch(`${GAS_API_URL}?mode=admin`)
-        .then(res => res.json())
-        .then(data => {
-          const isDataChanged = JSON.stringify(allDataCache) !== JSON.stringify(data);
-          if (isDataChanged) {
-            allDataCache = data;
-            updateAdminStatusBox(data.Daily_Reports ? data.Daily_Reports[1] : null);
-            if (callback) callback(data);
-            else renderCurrentPage();
-          }
-        })
-        .catch(err => console.error("Error syncing database:", err));
+    function adminEditingNow() {
+      return ['form-modal','notes-modal','crp-score-modal'].some(id => {
+        const el = document.getElementById(id);
+        return el && !el.classList.contains('hidden');
+      }) || !!document.querySelector('input:focus,textarea:focus,select:focus');
+    }
+
+    async function syncDatabase(callback) {
+      if (adminSyncInProgress) {
+        if (typeof callback === 'function') adminRefreshPending = true;
+        return;
+      }
+      adminSyncInProgress = true;
+      try {
+        const response = await fetch(`${GAS_API_URL}?mode=admin&_t=${Date.now()}`, {cache:'no-store'});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (data && data.success === false) throw new Error(data.message || 'โหลดข้อมูลไม่สำเร็จ');
+        const changed = JSON.stringify(allDataCache) !== JSON.stringify(data);
+        if (changed) {
+          allDataCache = data;
+          updateAdminStatusBox(data.Daily_Reports ? data.Daily_Reports[1] : null);
+        }
+        if (typeof callback === 'function') callback(data);
+        else if (changed && !adminEditingNow()) renderCurrentPage();
+      } catch (err) { console.error('Error syncing database:', err); }
+      finally {
+        adminSyncInProgress = false;
+        if (adminRefreshPending) {
+          adminRefreshPending = false;
+          setTimeout(() => syncDatabase(() => loadData()), 0);
+        }
+      }
     }
 
     function loadData() {
@@ -298,10 +324,10 @@
             );
           }
 
-          if (r[1] && match) categoriesMap[catName].push({ data: r, originalIndex: idx + 1 });
+          if (match && r[1]) categoriesMap[catName].push({ data: r, originalIndex: idx + 1 });
         });
 
-        const catKeys = Object.keys(categoriesMap).filter(cat => categoriesMap[cat].length > 0);
+        const catKeys = Object.keys(categoriesMap).filter(cat => !keyword || cat.toLowerCase().includes(keyword) || categoriesMap[cat].length > 0);
         let html = `<div class="space-y-6 animate-fadeIn">`;
 
         if (catKeys.length > 0) {
@@ -319,7 +345,7 @@
                       <p class="text-[10px] text-gray-400 font-bold uppercase">${items.length} รายการ</p>
                     </div>
                   </div>
-                  <button onclick="openAddItemToCategoryModal('${cat}')" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 px-4 py-2 rounded-xl font-black text-[10px] uppercase italic transition-all">
+                  <button onclick="openAddItemToCategoryModal(decodeURIComponent('${encodeURIComponent(cat).replace(/'/g, '%27')}'))" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 px-4 py-2 rounded-xl font-black text-[10px] uppercase italic transition-all">
                     ➕ เพิ่มรายการในหมวดนี้
                   </button>
                 </div>
@@ -1005,6 +1031,7 @@
       })
       .then(res => res.json())
       .then(res => {
+        if (!res || res.success === false) throw new Error(res?.message || 'บันทึกข้อมูลไม่สำเร็จ');
         resetStateFunc();
         showToast(customSuccessMsg || res.message);
         closeModal('form-modal');

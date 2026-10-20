@@ -423,12 +423,16 @@
 
     function renderTraining(keyword = '') {
       let html = `<h2 class="text-2xl font-black text-blue-400 mb-8 italic border-l-8 border-blue-500 pl-4 uppercase tracking-tighter">Mission Modules</h2><div class="space-y-6 animate-fadeIn">`;
-      if(!cacheData.Training_Log) return;
-      const rows = cacheData.Training_Log.slice(1);
+      const rows = Array.isArray(cacheData?.Training_Log) ? cacheData.Training_Log.slice(1) : [];
       
       const grouped = {};
       rows.forEach(r => {
-        const cat = r[0] || "ทั่วไป";
+        // Rows containing only a category name are real categories, not missing records.
+        // Keep them even when no subordinate training items have been added yet.
+        const categoryName = String(r?.[0] || '').trim();
+        const itemName = String(r?.[1] || '').trim();
+        if (!categoryName && !itemName) return;
+        const cat = categoryName || 'ทั่วไป';
         if (!grouped[cat]) grouped[cat] = [];
         const match = !keyword || (
           (r[0] && r[0].toLowerCase().includes(keyword)) ||
@@ -437,13 +441,17 @@
           (r[4] && r[4].toLowerCase().includes(keyword)) ||
           (r[5] && r[5].toLowerCase().includes(keyword))
         );
-        if (r[1] && match) grouped[cat].push(r);
+        if (itemName && match) grouped[cat].push(r);
       });
 
-      const categories = Object.keys(grouped).filter(cat => grouped[cat].length > 0);
+      // Match the admin page: show empty categories, including during category searches.
+      const categories = Object.keys(grouped).filter(cat =>
+        !keyword || cat.toLowerCase().includes(keyword) || grouped[cat].length > 0
+      );
       if (categories.length > 0) {
         categories.forEach(cat => {
-          html += `<div class="glass p-6 rounded-3xl border border-blue-500/20"><h3 class="text-lg font-black text-blue-400 uppercase italic mb-4 flex items-center gap-2"><i class="fas fa-folder-open text-sm"></i> ${cat}</h3><div class="grid gap-3">`;
+          html += `<div class="glass p-6 rounded-3xl border border-blue-500/20"><h3 class="text-lg font-black text-blue-400 uppercase italic mb-1 flex items-center gap-2"><i class="fas fa-folder-open text-sm"></i> ${cat}</h3><p class="text-[10px] text-gray-400 font-bold uppercase mb-4">${grouped[cat].length} รายการ</p><div class="grid gap-3">`;
+          if (!grouped[cat].length) html += `<p class="text-xs text-gray-500 italic py-5 text-center">ยังไม่มีรายการฝึกในหมวดนี้</p>`;
           html += grouped[cat].map(r => {
              let statusColor = "border-gray-500/40 text-gray-400 bg-gray-500/10";
              let cardStyle = "bg-white/5 border-white/10";

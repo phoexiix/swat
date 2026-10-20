@@ -1166,20 +1166,55 @@ function crpBuildPhases(initial){
 async function saveNotes(){
  const btn=document.getElementById('modal-submit-btn');
  if(btn.disabled)return;
- const days=Number(document.getElementById('crp-days').value);
- const count=Number(document.getElementById('crp-count').value);
- const phases=Array.from({length:count},(_,i)=>({name:document.getElementById('crp-name-'+i).value.trim(),start:Number(document.getElementById('crp-from-'+i).value),end:Number(document.getElementById('crp-to-'+i).value),description:document.getElementById('crp-desc-'+i).value.trim()}));
- const schedule=Array.from({length:15},(_,i)=>({start:document.getElementById('crp-start-'+i).value,end:document.getElementById('crp-end-'+i).value,activity:document.getElementById('crp-activity-'+i).value.trim()})).filter(x=>x.start||x.end||x.activity);
- if(!Number.isInteger(days)||days<1||days>365||count<1||count>30||phases.some(p=>!p.name||!p.start||!p.end||p.start>p.end||p.end>days)||schedule.some(s=>!s.start||!s.end||!s.activity||s.start>=s.end)){showToast('กรุณาตรวจสอบจำนวนวัน ระยะฝึก และช่วงเวลาของกิจกรรม','error');return;}
+ // แจ้งข้อมูลที่ต้องแก้ไขอย่างชัดเจน โดยไม่เปลี่ยนฟอร์มหรือเคลียร์ข้อมูลที่กรอกไว้
+ function reject(message,id){showToast(message,'error');const element=id&&document.getElementById(id);if(element){element.focus();}return;}
+ const daysEl=document.getElementById('crp-days');
+ const countEl=document.getElementById('crp-count');
+ const days=Number(daysEl.value);
+ const count=Number(countEl.value);
+ if(!daysEl.value||!Number.isInteger(days)||days<1||days>365)return reject('จำนวนวันฝึกต้องเป็นเลข 1–365 วัน','crp-days');
+ if(!countEl.value||!Number.isInteger(count)||count<1||count>30)return reject('จำนวนระยะฝึกต้องเป็นเลข 1–30 ระยะ','crp-count');
+ // หากจำนวนระยะที่ระบุไม่ตรงกับชุดช่องกรอก ให้สร้างช่องก่อนอ่านค่า (รักษาข้อมูลเดิม)
+ if(document.querySelectorAll('#crp-phase-fields [data-crp-phase]').length!==count)crpBuildPhases();
+ const phases=[];
+ for(let i=0;i<count;i++){
+  const nm=document.getElementById('crp-name-'+i);
+  const fr=document.getElementById('crp-from-'+i);
+  const to=document.getElementById('crp-to-'+i);
+  const ds=document.getElementById('crp-desc-'+i);
+  const name=nm.value.trim(),start=Number(fr.value),end=Number(to.value);
+  if(!name)return reject('กรุณาระบุชื่อระยะฝึกที่ '+(i+1),nm.id);
+  if(!fr.value||!Number.isInteger(start)||start<1||start>days)return reject('วันเริ่มระยะที่ '+(i+1)+' ต้องอยู่ระหว่างวันที่ 1–'+days,fr.id);
+  if(!to.value||!Number.isInteger(end)||end<start||end>days)return reject('วันสิ้นสุดระยะที่ '+(i+1)+' ต้องอยู่ระหว่างวันที่ '+start+'–'+days,to.id);
+  phases.push({name,start,end,description:ds.value.trim()});
+ }
+ // ช่องกิจกรรมทั้งหมดเป็นช่องทางเลือก เก็บรายการที่กรอกไม่ครบเป็นฉบับร่าง
+ // เพื่อไม่ให้การกรอก 15 รายการค้างเพราะยังไม่พร้อมกำหนดเวลา
+ const schedule=[];
+ const timeRe=/^([01]\d|2[0-3]):[0-5]\d$/;
+ for(let i=0;i<15;i++){
+  const st=document.getElementById('crp-start-'+i);
+  const en=document.getElementById('crp-end-'+i);
+  const ac=document.getElementById('crp-activity-'+i);
+  const start=st.value,end=en.value,activity=ac.value.trim();
+  if(start&&!timeRe.test(start))return reject('เวลาเริ่มกิจกรรมที่ '+(i+1)+' ไม่ถูกต้อง',st.id);
+  if(end&&!timeRe.test(end))return reject('เวลาสิ้นสุดกิจกรรมที่ '+(i+1)+' ไม่ถูกต้อง',en.id);
+  if(start&&end&&start===end)return reject('กิจกรรมที่ '+(i+1)+' เวลาเริ่มและสิ้นสุดต้องไม่ตรงกัน',en.id);
+  // ช่วงข้ามวัน เช่น 22:00–01:00 รองรับได้ตามเวลาที่ผู้ดูแลกรอก
+  schedule.push({start,end,activity});
+ }
  const config={days,phases,schedule,safety:document.getElementById('crp-safety').value.trim()};
+ const savedLabel=btn.textContent;
  btn.disabled=true;btn.textContent='กำลังบันทึก...';
  try{
-  const r=await fetch(GAS_API_URL,{method:'POST',body:JSON.stringify({action:'saveCurriculum',config})});
-  const res=await r.json();if(!res.success)throw Error(res.message||'บันทึกไม่สำเร็จ');
+  const response=await fetch(GAS_API_URL,{method:'POST',body:JSON.stringify({action:'saveCurriculum',config})});
+  if(!response.ok)throw Error('เซิร์ฟเวอร์ตอบกลับ HTTP '+response.status);
+  const res=await response.json();
+  if(!res.success)throw Error(res.message||'บันทึกไม่สำเร็จ');
   allDataCache.Curriculum_Config=[['JSON'],[JSON.stringify(config)]];
   closeModal('form-modal');renderNotesAdmin();showToast('บันทึกข้อมูลหลักสูตรสำเร็จ');
- }catch(e){showToast(e.message,'error');}
- finally{btn.disabled=false;btn.textContent='Save Record';btn.setAttribute('onclick',btn.dataset.originalClick||'submitForm()');}
+ }catch(e){showToast(e.message||'ไม่สามารถเชื่อมต่อ Google Apps Script ได้','error');}
+ finally{btn.disabled=false;btn.textContent=savedLabel;btn.setAttribute('onclick',btn.dataset.originalClick||'submitForm()');}
 }
 
 </script>

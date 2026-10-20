@@ -716,39 +716,100 @@ function renderNotesPublic(){document.getElementById('search-container').classLi
 <script>
 
 function crpScoreDetails(id, db) {
-  const categories=[
-    {key:'Training_Log',label:'ผลการฝึก',weight:70,done:5,pass:6,completed:'ฝึกสำเร็จ',title:1},
-    {key:'Physical_Test',label:'ทดสอบร่างกาย',weight:30,done:3,pass:4,completed:'ทดสอบสำเร็จ',title:1}
+  // คะแนนทั้ง 6 ระยะ รวม 100 คะแนน ไม่เกี่ยวกับเกณฑ์จำหน่ายเดิม
+  const weights=[15,16,16,17,18,18];
+  const baseNames=[
+    'ปรับสภาพและสร้างวินัยเข้มข้น',
+    'พัฒนาสมรรถภาพและความอดทน',
+    'ทักษะภาคสนามและการทำงานเป็นทีม',
+    'การช่วยเหลือฉุกเฉินและการจัดการสถานการณ์',
+    'การฝึกประยุกต์ขั้นสูง',
+    'ฝึกรวมและประเมินผลขั้นสุดท้าย'
   ];
-  let earned=0,available=0,hasFailure=false;
-  const groups=categories.map(cat=>{
-    const rows=(db?.[cat.key]||[]).slice(1).filter(r=>String(r[cat.title]||'').trim() && String(r[cat.done]||'')===cat.completed);
-    const items=rows.map(r=>{
-      const passed=String(r[cat.pass]||'').split(',').map(x=>x.trim()).includes(String(id).trim());
-      if(!passed)hasFailure=true;
-      return {title:String(r[cat.title]),passed,points:passed?100:0};
-    });
-    const points=items.length?items.filter(x=>x.passed).length/items.length*cat.weight:0;
-    earned+=points;
-    if(items.length)available+=cat.weight;
-    return {...cat,items,points};
+  let configured=[];
+  try {
+    const data=db?.Curriculum_Config?.[1]?.[0];
+    if(data) {
+      const parsed=JSON.parse(data);
+      if(Array.isArray(parsed.phases))configured=parsed.phases;
+    }
+  } catch(e) { /* ใช้ชื่อระยะมาตรฐาน หากยังไม่มีการตั้งค่าหลักสูตร */ }
+  const groups=weights.map((weight,i)=>({
+    number:i+1,weight,
+    label:'ระยะที่ '+(i+1)+' — '+(configured[i]?.name||baseNames[i]),
+    name:configured[i]?.name||baseNames[i],
+    items:[],earned:0,completed:0,pending:0,passed:0
+  }));
+  const clean=s=>String(s??'').trim().toLowerCase().replace(/\s+/g,' ');
+  const findPhase=r=>{
+    const category=clean(r[0]);
+    const title=String(r[1]||'').trim();
+    // ใช้หมวดของรายการฝึกเป็นข้อมูลหลัก (รองรับชื่อหมวดระยะที่ 1–6)
+    const explicit=category.match(/(?:ระยะ|ช่วง|เฟส|phase|stage)(?:\s*(?:การ)?ฝึก)?\s*(?:ที่)?\s*([1-6])(?=\D|$)/i);
+    if(explicit)return Number(explicit[1])-1;
+    // รองรับชื่อระยะฝึกที่ผู้ดูแลตั้งไว้ในเมนูหลักสูตร
+    for(let i=0;i<groups.length;i++) {
+      const names=[groups[i].name,baseNames[i]];
+      if(names.some(n=>clean(n) && (category===clean(n)||category.includes(clean(n)))))return i;
+    }
+    // รองรับไฟล์รายการฝึกเดิมที่ขึ้นต้นชื่อด้วย 1. ... ถึง 120. ...
+    const numbered=title.match(/^\s*(\d{1,3})\s*[.)．:–-]\s*/);
+    if(numbered) {
+      const number=Number(numbered[1]);
+      if(number>=1&&number<=120)return Math.floor((number-1)/20);
+    }
+    return -1;
+  };
+  const unassigned=[];
+  const idStr=String(id??'').trim();
+  (db?.Training_Log||[]).slice(1).forEach(r=>{
+    const title=String(r[1]||'').trim();
+    if(!title)return; // แถวสำหรับสร้างหมวดเปล่า ไม่ใช่รายการประเมิน
+    const phase=findPhase(r);
+    if(phase<0) {unassigned.push(title);return;}
+    const completed=String(r[5]||'').trim()==='ฝึกสำเร็จ';
+    const passed=completed && String(r[6]||'').split(',').some(x=>x.trim()===idStr);
+    groups[phase].items.push({title,completed,passed,earned:0,max:0});
   });
-  const score=available?Math.round(earned/available*1000)/10:null;
-  const completed=groups.reduce((s,g)=>s+g.items.length,0);
-  const passed=groups.reduce((s,g)=>s+g.items.filter(x=>x.passed).length,0);
-  const outcome=score===null?'ยังไม่มีผลประเมิน':score>=65?'ผ่านเกณฑ์คะแนน':score>=50?'เฝ้าติดตาม':'ไม่ผ่านเกณฑ์คะแนน';
-  return {groups,score,completed,passed,outcome,available};
+  let earned=0,completed=0,passed=0,pending=0,evaluatedMax=0;
+  groups.forEach(g=>{
+    const count=g.items.length;
+    const perItem=count?g.weight/count:0;
+    g.items.forEach(item=>{
+      item.max=perItem;
+      item.earned=item.passed?perItem:0;
+      if(item.completed){g.completed++;completed++;evaluatedMax+=perItem;}
+      else {g.pending++;pending++;}
+      if(item.passed){g.passed++;passed++;g.earned+=perItem;}
+    });
+    earned+=g.earned;
+  });
+  const round=n=>Math.round((n+Number.EPSILON)*100)/100;
+  earned=round(earned);
+  const score=completed?earned:null; // คะแนนสะสมจาก 100 คะแนน ไม่เพิ่มคะแนนแทนระยะที่ยังไม่ประเมิน
+  const rate=completed&&evaluatedMax?Math.round(earned/evaluatedMax*1000)/10:null;
+  const finished=groups.every(g=>g.items.length>0 && g.pending===0) && unassigned.length===0;
+  const outcome=completed===0?'ยังไม่มีผลประเมิน':!finished?'อยู่ระหว่างประเมิน':earned>=90?'ผ่านเกณฑ์คะแนน':'ไม่ผ่านเกณฑ์คะแนน';
+  return {groups,score,rate,completed,passed,pending,unassigned,finished,outcome,
+    total:groups.reduce((n,g)=>n+g.items.length,0),evaluatedMax:round(evaluatedMax)};
 }
-function crpScoreMarkup(id,db){
- const v=crpScoreDetails(id,db);
- const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- return `<div class="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 mb-4">
- <div class="text-blue-400 text-xs font-black mb-2">คะแนนประเมินรวม: ${v.score===null?'รอประเมิน':v.score.toFixed(1)+' / 100'} · ${v.outcome}</div>
- <div class="text-[10px] text-gray-400">ผลการฝึก 70 คะแนน · ทดสอบร่างกาย 30 คะแนน · ผ่านเกณฑ์ตั้งแต่ 65 คะแนน (เฉพาะรายการที่ประเมินเสร็จแล้ว)</div>
- <div class="text-[10px] text-gray-400 mt-1">บันทึกแล้ว ${v.completed} รายการ · ผ่าน ${v.passed} · ไม่ผ่าน ${v.completed-v.passed}</div></div>`+
- v.groups.map(g=>`<div class="mb-4"><h4 class="font-black text-sm text-blue-300 mb-2">${esc(g.label)} (${g.items.length?'ได้ '+g.points.toFixed(1)+' / '+g.weight:'ยังไม่ประเมิน'})</h4>`+
- (g.items.length?g.items.map(it=>`<div class="flex justify-between gap-3 p-3 border-b border-white/10 text-xs"><span>${esc(it.title)}</span><span class="${it.passed?'text-green-400':'text-red-400'} whitespace-nowrap">${it.passed?'ผ่าน':'ไม่ผ่าน'} · ${it.points}/100</span></div>`).join(''):'<p class="text-xs text-gray-500">ยังไม่มีรายการที่เสร็จสิ้น</p>')+'</div>').join('')+
- '<p class="text-[10px] text-gray-500">คะแนนต่อรายการ: ผ่าน = 100, ไม่ผ่าน = 0; คะแนนหมวด = สัดส่วนที่ผ่าน × น้ำหนักหมวด. หากมีเพียงหมวดเดียว จะคิดคะแนนจากหมวดที่มีผลแล้วเท่านั้น คะแนนเป็นผลชั่วคราวจนกว่าจะประเมินครบ</p>';
+function crpScoreMarkup(id, db) {
+  const v=crpScoreDetails(id,db);
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=n=>(Math.round(n*100)/100).toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+  let html=`<div class="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/5 mb-4">
+    <div class="text-blue-400 text-xs font-black mb-2">คะแนนสะสม: ${v.score===null?'รอประเมิน':fmt(v.score)+' / 100'} · ${esc(v.outcome)}</div>
+    <div class="text-[10px] text-gray-400">คะแนน 6 ระยะ: 15 + 16 + 16 + 17 + 18 + 18 = 100 คะแนน · ผ่านเกณฑ์ที่ 90%</div>
+    <div class="text-[10px] text-gray-400 mt-1">ประเมินแล้ว ${v.completed}/${v.total} รายการ · ผ่าน ${v.passed} · ไม่ผ่าน ${v.completed-v.passed} · รอผล ${v.pending}</div>
+    ${v.rate===null?'':`<div class="text-[10px] text-blue-300 mt-1">อัตราคะแนนเฉพาะรายการที่ประเมินแล้ว ${fmt(v.rate)}% (ไม่ใช่ผลผ่านหลักสูตร)</div>`}
+    ${v.finished?'':`<div class="text-[10px] text-yellow-400 mt-1">ผลคะแนนยังไม่สิ้นสุด ต้องประเมินรายการที่กำหนดให้ครบทั้ง 6 ระยะก่อนตัดสินเกณฑ์ 90%</div>`}
+  </div>`;
+  html+=v.groups.map(g=>`<div class="mb-4"><h4 class="font-black text-sm text-blue-300 mb-2">${esc(g.label)} — ${fmt(g.earned)} / ${g.weight} คะแนน</h4>
+    <div class="text-[10px] text-gray-400 mb-2">ประเมินแล้ว ${g.completed}/${g.items.length} รายการ · ผ่าน ${g.passed} · รอผล ${g.pending}</div>
+    ${g.items.length?g.items.map(it=>`<div class="flex justify-between gap-3 p-3 border-b border-white/10 text-xs"><span>${esc(it.title)}</span><span class="${!it.completed?'text-gray-400':it.passed?'text-green-400':'text-red-400'} whitespace-nowrap">${!it.completed?'รอผล':it.passed?'ผ่าน':'ไม่ผ่าน'} · ${it.completed?fmt(it.earned)+'/'+fmt(it.max):'—/'+fmt(it.max)}</span></div>`).join(''):'<p class="text-xs text-gray-500">ยังไม่มีรายการฝึกในระยะนี้</p>'}</div>`).join('');
+  if(v.unassigned.length)html+=`<div class="text-xs text-amber-300 mt-3">ยังไม่กำหนดระยะฝึกให้ ${v.unassigned.length} รายการ จึงยังไม่นำมาคิดคะแนน: ${v.unassigned.map(esc).join(' · ')} กรุณาระบุหมวดเป็น “ระยะที่ 1” ถึง “ระยะที่ 6”</div>`;
+  html+='<p class="text-[10px] text-gray-500 mt-3">คะแนนต่อรายการ = คะแนนเต็มของระยะ ÷ จำนวนรายการฝึกในระยะนั้น; ผ่านได้คะแนนเต็มของรายการ ไม่ผ่านได้ 0 และรายการที่รอผลยังไม่ได้คะแนน การทดสอบร่างกายยังแสดงตามระบบเดิม แต่ไม่รวมอยู่ในคะแนน 100 คะแนนนี้ เกณฑ์เฝ้าติดตาม/จำหน่าย/คัดออกใช้กติกาและสถานะเดิมโดยไม่เปลี่ยนแปลง</p>';
+  return html;
 }
 
 </script>

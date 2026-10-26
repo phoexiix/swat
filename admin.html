@@ -29,15 +29,26 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
     @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    /* Keep the original header visible while the page scrolls */
-    body > #admin-main-content > header, body > header {
-      position: sticky; top: 0; z-index: 90; background: rgba(2,6,23,.97);
-      backdrop-filter: blur(16px); padding-top: 12px; margin-top: -12px;
+    /* Sticky only on the main page; modals always cover the header and navigation. */
+    :root { --crp-header-height: 110px; --crp-sticky-gap: 12px; }
+    #admin-main-content > header {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(2,6,23,.97); backdrop-filter: blur(16px);
     }
-    @media(max-width:767px) {
-      body > #admin-main-content > header img, body > header img {width:48px;height:48px;object-fit:contain}
-      body > #admin-main-content > header h1, body > header h1 {font-size:clamp(16px,4vw,25px);line-height:1.2}
-      body > #admin-main-content > header {gap:10px}
+    #admin-main-content > div > div:first-child {
+      position: sticky; top: calc(var(--crp-header-height) + var(--crp-sticky-gap));
+      align-self: flex-start; z-index: 19;
+      max-height: calc(100dvh - var(--crp-header-height) - 24px);
+      overflow-y: auto; scrollbar-width: thin;
+    }
+    @media (max-width: 1023px) {
+      #admin-main-content > div > div:first-child {
+        position: relative; top: auto; max-height: none; overflow: visible;
+      }
+    }
+    @media (max-width: 767px) {
+      #admin-main-content > header img { width: 48px; height: 48px; object-fit: contain; }
+      #admin-main-content > header h1 { font-size: clamp(16px,4vw,25px); line-height: 1.2; }
     }
   </style>
 </head>
@@ -1344,6 +1355,24 @@ function crpScoreMarkup(id, db) {
   return html;
 }
 
+
+    // Match sidebar sticky offset to the actual header height.
+    (function () {
+      const headerSelector = "#admin-main-content > header";
+      function updateStickyOffset() {
+        const header = document.querySelector(headerSelector);
+        if (!header) return;
+        document.documentElement.style.setProperty('--crp-header-height', Math.ceil(header.getBoundingClientRect().height) + 'px');
+      }
+      window.addEventListener('load', updateStickyOffset);
+      window.addEventListener('resize', updateStickyOffset);
+      if (typeof ResizeObserver !== 'undefined') {
+        window.addEventListener('DOMContentLoaded', () => {
+          const header = document.querySelector(headerSelector);
+          if (header) new ResizeObserver(updateStickyOffset).observe(header);
+        });
+      }
+    })();
 </script>
 </body>
 </html>

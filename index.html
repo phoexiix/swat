@@ -20,15 +20,26 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.3); border-radius: 10px; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    /* Keep the original header visible while the page scrolls */
-    body > #admin-main-content > header, body > header {
-      position: sticky; top: 0; z-index: 90; background: rgba(2,6,23,.97);
-      backdrop-filter: blur(16px); padding-top: 12px; margin-top: -12px;
+    /* Sticky only on the main page; modals always cover the header and navigation. */
+    :root { --crp-header-height: 110px; --crp-sticky-gap: 12px; }
+    body > header {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(2,6,23,.97); backdrop-filter: blur(16px);
     }
-    @media(max-width:767px) {
-      body > #admin-main-content > header img, body > header img {width:48px;height:48px;object-fit:contain}
-      body > #admin-main-content > header h1, body > header h1 {font-size:clamp(16px,4vw,25px);line-height:1.2}
-      body > #admin-main-content > header {gap:10px}
+    body > div.grid > div:first-child {
+      position: sticky; top: calc(var(--crp-header-height) + var(--crp-sticky-gap));
+      align-self: flex-start; z-index: 19;
+      max-height: calc(100dvh - var(--crp-header-height) - 24px);
+      overflow-y: auto; scrollbar-width: thin;
+    }
+    @media (max-width: 1023px) {
+      body > div.grid > div:first-child {
+        position: relative; top: auto; max-height: none; overflow: visible;
+      }
+    }
+    @media (max-width: 767px) {
+      body > header img { width: 48px; height: 48px; object-fit: contain; }
+      body > header h1 { font-size: clamp(16px,4vw,25px); line-height: 1.2; }
     }
   </style>
 </head>
@@ -72,7 +83,7 @@
     </div>
   </div>
 
-  <div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
+  <div id="profile-modal" class="hidden fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md">
     <div class="glass w-full max-w-5xl rounded-[3rem] border border-blue-500/20 max-h-[95vh] overflow-hidden flex flex-col shadow-[0_0_50px_rgba(59,130,246,0.15)]">
       <div class="relative bg-slate-900/50 p-6 md:p-8 border-b border-white/5 flex justify-between items-start">
         <div class="flex items-center gap-6">
@@ -812,6 +823,24 @@ function crpScoreMarkup(id, db) {
   return html;
 }
 
+
+    // Match sidebar sticky offset to the actual header height.
+    (function () {
+      const headerSelector = "body > header";
+      function updateStickyOffset() {
+        const header = document.querySelector(headerSelector);
+        if (!header) return;
+        document.documentElement.style.setProperty('--crp-header-height', Math.ceil(header.getBoundingClientRect().height) + 'px');
+      }
+      window.addEventListener('load', updateStickyOffset);
+      window.addEventListener('resize', updateStickyOffset);
+      if (typeof ResizeObserver !== 'undefined') {
+        window.addEventListener('DOMContentLoaded', () => {
+          const header = document.querySelector(headerSelector);
+          if (header) new ResizeObserver(updateStickyOffset).observe(header);
+        });
+      }
+    })();
 </script>
 </body>
 </html>

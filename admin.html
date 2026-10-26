@@ -698,6 +698,48 @@
       setTimeout(() => document.getElementById('new_cat_name')?.focus(), 150);
     }
 
+
+    // Training date selector: uses the existing Daily_Log schedule only.
+    function openTrainingDatePicker(inputId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const dates = [...new Set((allDataCache?.Daily_Log || []).slice(1)
+        .map(row => String(row[0] || '').trim())
+        .filter(value => /^\d{2}\/\d{2}\/\d{4}$/.test(value)))]
+        .sort((a,b) => {
+          const [ad,am,ay] = a.split('/').map(Number);
+          const [bd,bm,by] = b.split('/').map(Number);
+          return new Date(ay,am-1,ad) - new Date(by,bm-1,bd);
+        });
+      if (!dates.length) {
+        showToast('ยังไม่มีวันที่ฝึก กรุณากำหนดวันที่ในเมนูรายงานรายวันก่อน', 'error');
+        return;
+      }
+      let modal = document.getElementById('training-date-picker-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'training-date-picker-modal';
+        modal.className = 'hidden fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-md';
+        document.body.appendChild(modal);
+      }
+      const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      modal.innerHTML = `<div class="glass w-full max-w-5xl rounded-[2rem] border border-blue-500/30 shadow-2xl p-5 md:p-8 max-h-[90vh] flex flex-col">
+        <div class="flex items-center justify-between gap-3 mb-5"><div><h3 class="text-xl font-black text-blue-400 italic">เลือกวันที่ฝึก</h3><p class="text-xs text-slate-400 mt-1">วันที่ 1–${dates.length} · ${escapeHtml(dates[0])} ถึง ${escapeHtml(dates[dates.length-1])}</p></div>
+        <button type="button" id="training-date-close" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-bold">✕</button></div>
+        <div class="overflow-x-auto overflow-y-auto custom-scrollbar"><div class="grid grid-cols-10 gap-2 min-w-[700px]">${dates.map((date,i) => `<button type="button" data-date-index="${i}" class="rounded-xl border ${input.value === date ? 'border-blue-400 bg-blue-600 text-white' : 'border-blue-500/20 bg-slate-900 hover:bg-blue-600/30 text-slate-200'} p-2 text-center transition"><span class="block text-[10px] text-blue-300 font-bold">วันที่ ${i+1}</span><span class="block text-[11px] font-bold mt-1">${escapeHtml(date)}</span></button>`).join('')}</div></div>
+        <p class="text-[11px] text-slate-500 mt-4">เลือกวันจากกำหนดการในรายงานรายวันเท่านั้น</p></div>`;
+      modal.querySelector('#training-date-close').onclick = () => modal.classList.add('hidden');
+      modal.querySelectorAll('[data-date-index]').forEach(button => {
+        button.onclick = () => {
+          input.value = dates[Number(button.dataset.dateIndex)];
+          input.dispatchEvent(new Event('change', {bubbles:true}));
+          modal.classList.add('hidden');
+        };
+      });
+      modal.onclick = event => { if (event.target === modal) modal.classList.add('hidden'); };
+      modal.classList.remove('hidden');
+    }
+
     function openAddItemToCategoryModal(catName) {
       isStatusBroadcast = false; editMode = false;
       targetCategoryForAdd = catName;
@@ -714,7 +756,7 @@
         f.innerHTML = `
           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หัวข้อการฝึก</label><input id="f1" class="f-in" placeholder="หัวข้อการฝึก"></div>
           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">รายละเอียดการฝึก</label><textarea id="f_desc" class="f-in custom-scrollbar" rows="3" placeholder="ระบุรายละเอียด..."></textarea></div>
-          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี เช่น 19/08/2026)</label><input type="text" id="f2" class="f-in" placeholder="เช่น 19/08/2026"></div>
+          <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี เช่น 19/08/2026)</label><input type="text" id="f2" class="f-in cursor-pointer" placeholder="กดเพื่อเลือกวันฝึก" readonly onclick="openTrainingDatePicker('f2')"></div>
           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่เจ้าหน้าที่ผู้ฝึก</label><select id="f3_cat" class="f-in" onchange="updateInstructorList('f3_cat', 'f3')">${generateStaffCategoryOptions()}</select></div>
           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้ฝึก</label><select id="f3" class="f-in"></select></div>
         `;
@@ -747,7 +789,7 @@
         <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่การฝึก</label><input id="edit_cat" class="f-in" value="${row[0]||''}"></div>
         <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">หัวข้อการฝึก</label><input id="edit_topic" class="f-in" value="${row[1]||''}"></div>
         <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">รายละเอียดการฝึก</label><textarea id="edit_desc" class="f-in custom-scrollbar" rows="3">${row[2]||''}</textarea></div>
-        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="edit_date" class="f-in" value="${row[3]||''}" placeholder="19/08/2026"></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="edit_date" class="f-in cursor-pointer" value="${row[3]||''}" placeholder="กดเพื่อเลือกวันฝึก" readonly onclick="openTrainingDatePicker('edit_date')"></div>
         <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่เจ้าหน้าที่ผู้ฝึก</label><select id="edit_instr_cat" class="f-in" onchange="updateInstructorList('edit_instr_cat', 'edit_instr')">${generateStaffCategoryOptions(currentCat)}</select></div>
         <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้ฝึก</label><select id="edit_instr" class="f-in"></select></div>
         <div class="mb-4"><label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะ</label><select id="edit_status" class="f-in" onchange="toggleTraineeList('trainee_check_list', 'edit_status')"><option value="รอดำเนินการ" ${row[5]==='รอดำเนินการ'?'selected':''}>รอดำเนินการ</option><option value="กำลังเตรียมการ" ${row[5]==='กำลังเตรียมการ'?'selected':''}>กำลังเตรียมการ</option><option value="กำลังดำเนินการ" ${row[5]==='กำลังดำเนินการ'?'selected':''}>กำลังดำเนินการ</option><option value="ฝึกสำเร็จ" ${row[5]==='ฝึกสำเร็จ'?'selected':''}>ฝึกสำเร็จ</option></select></div>${traineeHTML}`;

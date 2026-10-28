@@ -722,26 +722,26 @@
     function crpDailyTrainingHTML(date, db, detailed = false, dailyStatus = '') {
       const result = crpDailyTrainingSummary(date, db);
       const fmt = n => n.toLocaleString('th-TH', {maximumFractionDigits: 2});
-      const itemHTML = item => {
-        const duration = item.special ? 'มีการฝึกพิเศษ (W) · ไม่คำนวณชั่วโมง' : item.hours === null ? 'ไม่ระบุชั่วโมง' : `${fmt(item.hours)} ชั่วโมง`;
-        return `<li class="py-2 border-t border-white/10"><div class="text-slate-200 break-words">${crpEscape(item.title)}</div><div class="mt-1 text-slate-400">${duration}${item.groupKey ? '' : ` · ${crpEscape(item.status)} (ยังไม่รวมชั่วโมง)`}</div></li>`;
-      };
-      const listClass = detailed ? '' : 'max-h-64 overflow-y-auto custom-scrollbar';
-      const cards = result.groups.map(group => `<div class="p-3 rounded-xl border-2 ${group.style}" aria-label="${group.label}">
-        <div class="font-bold ${group.text}">${group.label}</div>
-        <div class="mt-1 font-bold ${group.text}">${fmt(group.hours)} ชั่วโมง <span class="text-[10px] font-normal">· ${group.items.length} รายการ</span></div>
-        ${group.special ? `<p class="mt-2 ${group.text}">มีการฝึกพิเศษ ${group.special} รายการ (W) · ไม่คำนวณชั่วโมง</p>` : ''}
-        ${group.unknown ? `<p class="mt-2 text-slate-400">${group.unknown} รายการไม่ระบุชั่วโมง จึงยังไม่รวมในยอด</p>` : ''}
-        ${group.items.length ? `<ul class="mt-2 ${listClass}">${group.items.map(itemHTML).join('')}</ul>` : '<p class="mt-2 text-slate-500">ไม่มีรายการ</p>'}
-      </div>`).join('');
-      return `<section class="mt-4 p-4 rounded-xl bg-slate-950/50 border border-blue-500/20 text-xs" aria-label="สรุปชั่วโมงฝึกประจำวัน">
+      if (!detailed) {
+        return `<div class="mt-4 text-sm font-bold text-blue-300" aria-label="ชั่วโมงฝึกประจำวัน">รวมชั่วโมงฝึก ${fmt(result.hours)} ชั่วโมง</div>`;
+      }
+      // Keep source order; a status change recolors the same item in place.
+      const cards = result.items.map(item => {
+        const group = result.groups.find(group => group.key === item.groupKey);
+        const style = group ? group.style : 'border-slate-600 bg-slate-800/30';
+        const text = group ? group.text : 'text-slate-400';
+        const status = group ? group.label : item.status;
+        return `<li class="p-3 rounded-xl border-2 ${style}" title="${crpEscape(status)}" aria-label="${crpEscape(item.title)} — ${crpEscape(status)}">
+          <div class="font-bold break-words ${text}">${crpEscape(item.title)}</div>
+          ${item.special ? '<p class="mt-1 text-xs text-amber-300">มีการฝึกพิเศษ (W) · ไม่คำนวณชั่วโมง</p>' : ''}
+        </li>`;
+      }).join('');
+      return `<section class="mt-4 p-4 rounded-xl bg-slate-950/50 border border-blue-500/20 text-xs" aria-label="รายละเอียดการฝึกประจำวัน">
         <div class="font-bold text-blue-300">รวมชั่วโมงฝึก ${fmt(result.hours)} ชั่วโมง</div>
-        <p class="text-[10px] text-slate-400 mt-1">รวมตั้งแต่กำลังเตรียมการ กำลังฝึก และฝึกสำเร็จ ตามชั่วโมงในวงเล็บของรายการ</p>
-        ${result.special ? `<p class="text-amber-300 font-bold mt-2">มีการฝึกพิเศษ ${result.special} รายการ (W) · ไม่คำนวณชั่วโมง</p>` : ''}
+        ${result.special ? `<p class="text-amber-300 mt-2">มีการฝึกพิเศษ ${result.special} รายการ (W) · ไม่คำนวณชั่วโมง</p>` : ''}
+        ${result.unknown ? `<p class="text-slate-400 mt-2">${result.unknown} รายการไม่ระบุชั่วโมง จึงยังไม่รวมในยอด</p>` : ''}
         ${dailyStatus === 'ไม่มีการฝึก' && result.items.some(item => item.groupKey) ? '<p class="text-amber-300 mt-2">มีรายการฝึกตั้งแต่สถานะกำลังเตรียมการในวันที่ระบุ กรุณาตรวจสอบสถานะรายงาน “ไม่มีการฝึก”</p>' : ''}
-        <div class="grid grid-cols-1 gap-3 mt-3">${cards}</div>
-        ${result.pending.length ? `<div class="mt-3 p-3 rounded-xl border border-slate-600 bg-slate-800/30"><div class="font-bold text-slate-400">รอดำเนินการ / สถานะอื่น ${result.pending.length} รายการ · ยังไม่รวมชั่วโมง</div><ul class="mt-2 ${listClass}">${result.pending.map(itemHTML).join('')}</ul></div>` : ''}
-        ${result.items.length ? '' : '<p class="text-slate-500 mt-3">ยังไม่มีรายการฝึกในวันที่นี้</p>'}
+        ${cards ? `<ul class="space-y-2 mt-3">${cards}</ul>` : '<p class="text-slate-500 mt-3">ยังไม่มีรายการฝึกในวันที่นี้</p>'}
       </section>`;
     }
 

@@ -794,6 +794,12 @@
 
 
     // Training date selector: uses the existing Daily_Log schedule only.
+    function crpTrainingDateLocked(value) {
+      const key = crpDailyDateKey(value);
+      return !!key && (allDataCache?.Daily_Log || []).slice(1).some(row =>
+        crpDailyDateKey(row[0]) === key && String(row[1] || '').trim() === 'ปกติ');
+    }
+
     function openTrainingDatePicker(inputId) {
       const input = document.getElementById(inputId);
       if (!input || input.disabled) return;
@@ -820,12 +826,20 @@
       modal.innerHTML = `<div class="glass w-full max-w-5xl rounded-[2rem] border border-blue-500/30 shadow-2xl p-5 md:p-8 max-h-[90vh] flex flex-col">
         <div class="flex items-center justify-between gap-3 mb-5"><div><h3 class="text-xl font-black text-blue-400 italic">เลือกวันที่ฝึก</h3><p class="text-xs text-slate-400 mt-1">วันที่ 1–${dates.length} · ${escapeHtml(dates[0])} ถึง ${escapeHtml(dates[dates.length-1])}</p></div>
         <button type="button" id="training-date-close" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-bold">✕</button></div>
-        <div class="overflow-x-auto overflow-y-auto custom-scrollbar"><div class="grid grid-cols-10 gap-2 min-w-[700px]">${dates.map((date,i) => `<button type="button" data-date-index="${i}" class="rounded-xl border ${input.value === date ? 'border-blue-400 bg-blue-600 text-white' : 'border-blue-500/20 bg-slate-900 hover:bg-blue-600/30 text-slate-200'} p-2 text-center transition"><span class="block text-[10px] text-blue-300 font-bold">วันที่ ${i+1}</span><span class="block text-[11px] font-bold mt-1">${escapeHtml(date)}</span></button>`).join('')}</div></div>
-        <p class="text-[11px] text-slate-500 mt-4">เลือกวันจากกำหนดการในรายงานรายวันเท่านั้น</p></div>`;
+        <div class="overflow-x-auto overflow-y-auto custom-scrollbar"><div class="grid grid-cols-6 gap-2 min-w-[420px]">${dates.map((date,i) => {
+          const locked = crpTrainingDateLocked(date);
+          const style = locked ? 'border-green-500/40 bg-green-500/15 text-green-300 cursor-not-allowed'
+            : input.value === date ? 'border-blue-400 bg-blue-600 text-white'
+            : 'border-blue-500/20 bg-slate-900 hover:bg-blue-600/30 text-slate-200';
+          return `<button type="button" data-date-index="${i}" ${locked ? 'disabled aria-disabled="true" title="รายงานปกติแล้ว · ล็อกวันฝึก"' : ''} class="rounded-xl border ${style} p-2 text-center transition"><span class="block text-[10px] font-bold">วันที่ ${i+1}</span><span class="block text-[11px] font-bold mt-1">${escapeHtml(date)}</span>${locked ? '<span class="block text-[9px] font-bold mt-1">🔒 ปกติแล้ว</span>' : ''}</button>`;
+        }).join('')}</div></div>
+        <p class="text-[11px] text-slate-500 mt-4">เลือกวันจากกำหนดการในรายงานรายวันเท่านั้น · สีเขียวคือวันที่รายงานปกติแล้วและล็อกการเลือก</p></div>`;
       modal.querySelector('#training-date-close').onclick = () => modal.classList.add('hidden');
       modal.querySelectorAll('[data-date-index]').forEach(button => {
         button.onclick = () => {
-          input.value = dates[Number(button.dataset.dateIndex)];
+          const date = dates[Number(button.dataset.dateIndex)];
+          if (!date || button.disabled || crpTrainingDateLocked(date)) return;
+          input.value = date;
           input.dispatchEvent(new Event('input', {bubbles:true}));
           input.dispatchEvent(new Event('change', {bubbles:true}));
           modal.classList.add('hidden');

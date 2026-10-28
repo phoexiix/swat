@@ -168,6 +168,7 @@
     let adminSyncInProgress = false;
     let adminRefreshPending = false;
     window.onload = () => {
+      restoreAdminSession();
       syncDatabase();
       setInterval(() => syncDatabase(), 5000);
     };
@@ -652,6 +653,7 @@
                   </div>
                   ${statusBadge}
                 </div>
+                ${crpDailyTrainingHTML(r[0], data, false, status)}
                 ${r[3] ? `<div class="text-[9px] text-gray-500 font-bold uppercase mt-3 tracking-wider"><i class="fas fa-user-circle mr-1"></i> ${r[3]}</div>` : ''}
               </div>
             `;
@@ -660,6 +662,92 @@
           container.innerHTML = html + `</div>`;
         }
       }
+    }
+
+    // Hours come from the training title, never from the daily timetable.
+    function crpDailyDateKey(value) {
+      const match = String(value || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!match) return '';
+      const day = Number(match[1]), month = Number(match[2]);
+      let year = Number(match[3]);
+      if (year >= 2400) year -= 543;
+      const date = new Date(year, month - 1, day);
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return '';
+      return `${year}-${month}-${day}`;
+    }
+
+    function crpTrainingDuration(title) {
+      const text = String(title || '').replace(/[๐-๙]/g, d => String('๐๑๒๓๔๕๖๗๘๙'.indexOf(d)));
+      const markers = Array.from(text.matchAll(/[（(]([^()（）]*)[)）]/g), m => m[1].trim());
+      if (markers.some(m => /^w$/i.test(m))) return {special: true, hours: null};
+      for (let i = markers.length - 1; i >= 0; i--) {
+        const match = markers[i].match(/^(\d+(?:[.,]\d+)?)\s*(?:ชั่วโมง(?:ฝึก)?|ชม\.?|h(?:r(?:s)?)?|hours?)?$/i);
+        if (match) {
+          const hours = Number(match[1].replace(',', '.'));
+          if (Number.isFinite(hours) && hours > 0) return {special: false, hours};
+        }
+      }
+      return {special: false, hours: null};
+    }
+
+    function crpDailyTrainingSummary(date, db) {
+      const key = crpDailyDateKey(date);
+      const groups = [
+        {key: 'preparing', label: 'กำลังเตรียมการ', style: 'border-orange-500/50 bg-orange-500/10', text: 'text-orange-300'},
+        {key: 'training', label: 'กำลังฝึก', style: 'border-blue-500/50 bg-blue-500/10', text: 'text-blue-300'},
+        {key: 'completed', label: 'ฝึกสำเร็จ', style: 'border-green-500/50 bg-green-500/10', text: 'text-green-300'}
+      ].map(group => ({...group, items: [], hours: 0, special: 0, unknown: 0}));
+      const items = [], pending = [];
+      let hours = 0, special = 0, unknown = 0;
+      (db?.Training_Log || []).slice(1).forEach(row => {
+        const title = String(row[1] || '').trim();
+        if (!key || !title || crpDailyDateKey(row[3]) !== key) return;
+        const duration = crpTrainingDuration(title);
+        const status = String(row[5] || '').trim() || 'รอดำเนินการ';
+        const groupKey = status === 'กำลังเตรียมการ' ? 'preparing'
+          : ['กำลังดำเนินการ', 'กำลังฝึก'].includes(status) ? 'training'
+          : status === 'ฝึกสำเร็จ' ? 'completed' : '';
+        const item = {title, status, groupKey, ...duration};
+        items.push(item);
+        const group = groups.find(group => group.key === groupKey);
+        if (!group) { pending.push(item); return; }
+        group.items.push(item);
+        if (duration.special) { group.special++; special++; }
+        else if (duration.hours !== null) { group.hours += duration.hours; hours += duration.hours; }
+        else { group.unknown++; unknown++; }
+      });
+      return {items, groups, pending, hours, special, unknown};
+    }
+
+    function crpDailyTrainingHTML(date, db, detailed = false, dailyStatus = '') {
+      const result = crpDailyTrainingSummary(date, db);
+      const fmt = n => n.toLocaleString('th-TH', {maximumFractionDigits: 2});
+      const itemHTML = item => {
+        const duration = item.special ? 'มีการฝึกพิเศษ (W) · ไม่คำนวณชั่วโมง' : item.hours === null ? 'ไม่ระบุชั่วโมง' : `${fmt(item.hours)} ชั่วโมง`;
+        return `<li class="py-2 border-t border-white/10"><div class="text-slate-200 break-words">${crpEscape(item.title)}</div><div class="mt-1 text-slate-400">${duration}${item.groupKey ? '' : ` · ${crpEscape(item.status)} (ยังไม่รวมชั่วโมง)`}</div></li>`;
+      };
+      const listClass = detailed ? '' : 'max-h-64 overflow-y-auto custom-scrollbar';
+      const cards = result.groups.map(group => `<div class="p-3 rounded-xl border-2 ${group.style}" aria-label="${group.label}">
+        <div class="font-bold ${group.text}">${group.label}</div>
+        <div class="mt-1 font-bold ${group.text}">${fmt(group.hours)} ชั่วโมง <span class="text-[10px] font-normal">· ${group.items.length} รายการ</span></div>
+        ${group.special ? `<p class="mt-2 ${group.text}">มีการฝึกพิเศษ ${group.special} รายการ (W) · ไม่คำนวณชั่วโมง</p>` : ''}
+        ${group.unknown ? `<p class="mt-2 text-slate-400">${group.unknown} รายการไม่ระบุชั่วโมง จึงยังไม่รวมในยอด</p>` : ''}
+        ${group.items.length ? `<ul class="mt-2 ${listClass}">${group.items.map(itemHTML).join('')}</ul>` : '<p class="mt-2 text-slate-500">ไม่มีรายการ</p>'}
+      </div>`).join('');
+      return `<section class="mt-4 p-4 rounded-xl bg-slate-950/50 border border-blue-500/20 text-xs" aria-label="สรุปชั่วโมงฝึกประจำวัน">
+        <div class="font-bold text-blue-300">รวมชั่วโมงฝึก ${fmt(result.hours)} ชั่วโมง</div>
+        <p class="text-[10px] text-slate-400 mt-1">รวมตั้งแต่กำลังเตรียมการ กำลังฝึก และฝึกสำเร็จ ตามชั่วโมงในวงเล็บของรายการ</p>
+        ${result.special ? `<p class="text-amber-300 font-bold mt-2">มีการฝึกพิเศษ ${result.special} รายการ (W) · ไม่คำนวณชั่วโมง</p>` : ''}
+        ${dailyStatus === 'ไม่มีการฝึก' && result.items.some(item => item.groupKey) ? '<p class="text-amber-300 mt-2">มีรายการฝึกตั้งแต่สถานะกำลังเตรียมการในวันที่ระบุ กรุณาตรวจสอบสถานะรายงาน “ไม่มีการฝึก”</p>' : ''}
+        <div class="grid grid-cols-1 gap-3 mt-3">${cards}</div>
+        ${result.pending.length ? `<div class="mt-3 p-3 rounded-xl border border-slate-600 bg-slate-800/30"><div class="font-bold text-slate-400">รอดำเนินการ / สถานะอื่น ${result.pending.length} รายการ · ยังไม่รวมชั่วโมง</div><ul class="mt-2 ${listClass}">${result.pending.map(itemHTML).join('')}</ul></div>` : ''}
+        ${result.items.length ? '' : '<p class="text-slate-500 mt-3">ยังไม่มีรายการฝึกในวันที่นี้</p>'}
+      </section>`;
+    }
+
+    function refreshDailyTrainingPreview() {
+      const preview = document.getElementById('daily-training-preview');
+      if (preview) preview.innerHTML = crpDailyTrainingHTML(document.getElementById('daily_date').value, allDataCache, true, document.getElementById('daily_status').value);
     }
 
     function setModalReadOnly(isReadOnly) {
@@ -854,15 +942,16 @@
       const currentReporter = row[3] || "";
 
       f.innerHTML = `
-        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="daily_date" class="f-in" value="${currentDate}" placeholder="19/08/2026"></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="daily_date" class="f-in" value="${crpEscape(currentDate)}" placeholder="19/08/2026" oninput="refreshDailyTrainingPreview()"></div>
         <div class="mb-4">
           <label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะการฝึกวันนี้</label>
-          <select id="daily_status" class="f-in">
+          <select id="daily_status" class="f-in" onchange="refreshDailyTrainingPreview()">
             <option value="ปกติ" ${currentStatus === 'ปกติ' ? 'selected' : ''}>🟢 ฝึกปกติ</option>
             <option value="ไม่มีการฝึก" ${currentStatus === 'ไม่มีการฝึก' ? 'selected' : ''}>🟡 ไม่มีกิจกรรมการฝึก / งดฝึก</option>
             <option value="ไม่ปกติ" ${currentStatus === 'ไม่ปกติ' ? 'selected' : ''}>🔴 เหตุการณ์ไม่ปกติ / ฉุกเฉิน</option>
           </select>
         </div>
+        <div id="daily-training-preview">${crpDailyTrainingHTML(currentDate, allDataCache, true, currentStatus)}</div>
         <div class="mb-4">
           <label class="text-[10px] uppercase font-bold text-cyan-400 mb-1 block">หมายเหตุ / รายละเอียด / เหตุผลความผิดปกติ</label>
           <textarea id="daily_desc" class="f-in border-cyan-500/30 text-cyan-200 custom-scrollbar" rows="3" placeholder="ระบุหมายเหตุ หรือเหตุผลความผิดปกติ (กรณีไม่ปกติ)...">${currentDesc}</textarea>
@@ -1093,6 +1182,8 @@
     }
 
     function changePage(pageId, btn) {
+      try { if (sessionStorage.getItem(CRP_ADMIN_SESSION_KEY) === 'active') sessionStorage.setItem(CRP_ADMIN_PAGE_KEY, pageId); } catch (_) {}
+      if (!btn) btn = Array.from(document.querySelectorAll('.nav-btn-admin')).find(b => b.getAttribute('onclick')?.includes(`'${pageId}'`));
       if(btn) { document.querySelectorAll('.nav-btn-admin').forEach(b => b.classList.remove('active-nav')); btn.classList.add('active-nav'); }
       currentSheet = pageId === 'notes' ? 'Curriculum_Config' : pageId === 'trainee' ? 'Trainees' : pageId === 'training' ? 'Training_Log' : pageId === 'staff' ? 'Staff_Committee' : pageId === 'physical' ? 'Physical_Test' : pageId === 'timeline' ? 'timeline' : 'Daily_Log';
       document.getElementById('admin-page-title').innerText = pageId.toUpperCase();
@@ -1134,13 +1225,64 @@
       }
     }
 
+    const CRP_ADMIN_SESSION_KEY = 'crp-s2-admin-session-v1';
+    const CRP_ADMIN_PAGE_KEY = 'crp-s2-admin-page-v1';
+
+    function clearAdminSession() {
+      try {
+        sessionStorage.removeItem(CRP_ADMIN_SESSION_KEY);
+        sessionStorage.removeItem(CRP_ADMIN_PAGE_KEY);
+      } catch (_) { /* Login still works when browser storage is unavailable. */ }
+    }
+
+    function showAdminConsole(pageId = 'training') {
+      const pages = ['training', 'staff', 'trainee', 'physical', 'daily_log', 'timeline', 'notes'];
+      document.getElementById('admin-pass').value = '';
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('admin-main-content').classList.remove('hidden');
+      changePage(pages.includes(pageId) ? pageId : 'training');
+      window.dispatchEvent(new Event('resize'));
+    }
+
+    function restoreAdminSession() {
+      // Restore only a refresh of this tab. New visits (including Back/Forward)
+      // require login even if a browser copied or restored sessionStorage.
+      const navigation = performance.getEntriesByType?.('navigation')?.[0];
+      const isReload = navigation ? navigation.type === 'reload' : performance.navigation?.type === 1;
+      try {
+        if (isReload && sessionStorage.getItem(CRP_ADMIN_SESSION_KEY) === 'active') {
+          showAdminConsole(sessionStorage.getItem(CRP_ADMIN_PAGE_KEY) || 'training');
+          return;
+        }
+      } catch (_) {}
+      clearAdminSession();
+    }
+
+    window.addEventListener('pageshow', event => {
+      if (!event.persisted) return;
+      clearAdminSession();
+      document.getElementById('login-overlay').classList.remove('hidden');
+      document.getElementById('admin-main-content').classList.add('hidden');
+      document.getElementById('admin-pass').value = '';
+      ['form-modal', 'crp-score-modal', 'training-date-picker'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    });
+
     function checkAdminLogin() {
       const u = document.getElementById('admin-user').value, p = document.getElementById('admin-pass').value;
-      if (u === "11" && p === "2588") { document.getElementById('login-overlay').classList.add('hidden'); document.getElementById('admin-main-content').classList.remove('hidden'); showToast("Access Granted"); changePage('training'); }
+      if (u === "11" && p === "2588") {
+        try { sessionStorage.setItem(CRP_ADMIN_SESSION_KEY, 'active'); } catch (_) {}
+        showToast("Access Granted"); showAdminConsole();
+      }
       else { showToast("Access Denied", "error"); document.getElementById('admin-pass').value = ""; }
     }
 
-    function logout() { window.location.href = "index.html"; }
+    function logout() {
+      clearAdminSession();
+      document.getElementById('admin-main-content').classList.add('hidden');
+      document.getElementById('login-overlay').classList.remove('hidden');
+      document.getElementById('admin-pass').value = '';
+      window.location.href = "index.html";
+    }
     function closeModal(id) { document.getElementById(id).classList.add('hidden'); if(id==='form-modal'){const b=document.getElementById('modal-submit-btn');b.setAttribute('onclick','submitForm()');} }
     function showToast(m, t='success') {
       const c = document.getElementById('toast-container');

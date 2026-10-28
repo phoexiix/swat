@@ -826,7 +826,7 @@
       modal.innerHTML = `<div class="glass w-full max-w-5xl rounded-[2rem] border border-blue-500/30 shadow-2xl p-5 md:p-8 max-h-[90vh] flex flex-col">
         <div class="flex items-center justify-between gap-3 mb-5"><div><h3 class="text-xl font-black text-blue-400 italic">เลือกวันที่ฝึก</h3><p class="text-xs text-slate-400 mt-1">วันที่ 1–${dates.length} · ${escapeHtml(dates[0])} ถึง ${escapeHtml(dates[dates.length-1])}</p></div>
         <button type="button" id="training-date-close" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl font-bold">✕</button></div>
-        <div class="overflow-x-auto overflow-y-auto custom-scrollbar"><div class="grid grid-cols-6 gap-2 min-w-[420px]">${dates.map((date,i) => {
+        <div class="overflow-x-auto overflow-y-auto custom-scrollbar"><div class="grid grid-cols-7 gap-2 min-w-[490px]">${dates.map((date,i) => {
           const locked = crpTrainingDateLocked(date);
           const style = locked ? 'border-green-500/40 bg-green-500/15 text-green-300 cursor-not-allowed'
             : input.value === date ? 'border-blue-400 bg-blue-600 text-white'

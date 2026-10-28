@@ -345,6 +345,12 @@
         if (catKeys.length > 0) {
           catKeys.forEach(cat => {
             const items = categoriesMap[cat];
+            const trainingTotals = isStaff ? null : items.reduce((totals, item) => {
+              const duration = crpTrainingDuration(item.data[1]);
+              if (duration.special) totals.special++;
+              else if (duration.hours !== null) totals.hours += duration.hours;
+              return totals;
+            }, {hours: 0, special: 0});
             html += `
               <div class="glass p-6 rounded-3xl border border-white/10 shadow-xl">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-white/10 pb-4">
@@ -354,7 +360,7 @@
                     </div>
                     <div>
                       <h3 class="text-lg font-black text-white italic uppercase">${cat}</h3>
-                      <p class="text-[10px] text-gray-400 font-bold uppercase">${items.length} รายการ</p>
+                      <p class="text-[10px] text-gray-400 font-bold uppercase">${items.length} รายการ${trainingTotals ? ` · ${trainingTotals.hours.toLocaleString('th-TH', {maximumFractionDigits: 2})} ชั่วโมง · W ${trainingTotals.special} รายการ` : ''}</p>
                     </div>
                   </div>
                   <button onclick="openAddItemToCategoryModal(decodeURIComponent('${encodeURIComponent(cat).replace(/'/g, '%27')}'))" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 px-4 py-2 rounded-xl font-black text-[10px] uppercase italic transition-all">

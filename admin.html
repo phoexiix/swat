@@ -796,7 +796,7 @@
     // Training date selector: uses the existing Daily_Log schedule only.
     function openTrainingDatePicker(inputId) {
       const input = document.getElementById(inputId);
-      if (!input) return;
+      if (!input || input.disabled) return;
       const dates = [...new Set((allDataCache?.Daily_Log || []).slice(1)
         .map(row => String(row[0] || '').trim())
         .filter(value => /^\d{2}\/\d{2}\/\d{4}$/.test(value)))]
@@ -826,6 +826,7 @@
       modal.querySelectorAll('[data-date-index]').forEach(button => {
         button.onclick = () => {
           input.value = dates[Number(button.dataset.dateIndex)];
+          input.dispatchEvent(new Event('input', {bubbles:true}));
           input.dispatchEvent(new Event('change', {bubbles:true}));
           modal.classList.add('hidden');
         };
@@ -913,7 +914,7 @@
        traineeHTML += `</div></div>`;
 
        f.innerHTML = `
-           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="phy_date" class="f-in" value="${row[0]||''}" placeholder="19/08/2026"></div>
+           <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="phy_date" class="f-in cursor-pointer" value="${crpEscape(row[0]||'')}" placeholder="กดเพื่อเลือกวันฝึก" readonly onclick="openTrainingDatePicker('phy_date')"></div>
            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อการทดสอบ</label><input type="text" id="phy_name" class="f-in" value="${row[1]}"></div>
            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่ผู้คุมสอบ</label><select id="phy_instr_cat" class="f-in" onchange="updateInstructorList('phy_instr_cat', 'phy_instr')">${generateStaffCategoryOptions(currentCat)}</select></div>
            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้คุมสอบ</label><select id="phy_instr" class="f-in"></select></div>
@@ -948,7 +949,7 @@
       const currentReporter = row[3] || "";
 
       f.innerHTML = `
-        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="daily_date" class="f-in" value="${crpEscape(currentDate)}" placeholder="19/08/2026" oninput="refreshDailyTrainingPreview()"></div>
+        <div class="mb-4"><label class="text-[10px] uppercase font-bold text-gray-400 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="daily_date" class="f-in cursor-pointer" value="${crpEscape(currentDate)}" placeholder="กดเพื่อเลือกวันฝึก" readonly onclick="openTrainingDatePicker('daily_date')" oninput="refreshDailyTrainingPreview()"></div>
         <div class="mb-4">
           <label class="text-[10px] uppercase font-bold text-yellow-500 mb-1 block">สถานะการฝึกวันนี้</label>
           <select id="daily_status" class="f-in" onchange="refreshDailyTrainingPreview()">
@@ -1033,10 +1034,8 @@
       }
       else if(currentSheet==='Physical_Test') {
           const nextCount = allDataCache && allDataCache.Physical_Test ? allDataCache.Physical_Test.length : 1; 
-          const today = new Date();
-          const dateStr = `${today.getDate().toString().padStart(2,'0')}/${(today.getMonth()+1).toString().padStart(2,'0')}/${today.getFullYear()}`;
           f.innerHTML = `
-            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="f0" class="f-in" value="${dateStr}" placeholder="19/08/2026"></div>
+            <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">วันที่ (วัน เดือน ปี)</label><input type="text" id="f0" class="f-in cursor-pointer" placeholder="กดเพื่อเลือกวันฝึก" readonly onclick="openTrainingDatePicker('f0')"></div>
             <div class="p-4 bg-white/5 rounded-xl border border-white/10 text-center mb-3"><p class="text-[10px] text-gray-400 font-bold uppercase">System will generate:</p><h3 class="text-xl font-bold text-blue-400 mt-1">ทดสอบร่างกายครั้งที่ ${nextCount}</h3></div>
             <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">หมวดหมู่ผู้คุมสอบ</label><select id="f2_cat" class="f-in" onchange="updateInstructorList('f2_cat', 'f2')">${generateStaffCategoryOptions()}</select></div>
             <div class="mb-4"><label class="text-[10px] uppercase font-bold text-blue-500 mb-1 block">ชื่อผู้คุมสอบ</label><select id="f2" class="f-in"></select></div>
@@ -1168,6 +1167,12 @@
           else d = raw;
       }
 
+      if (currentSheet === 'Physical_Test' && !d[0]) {
+        showToast('กรุณากดเลือกวันที่ทดสอบจากวันฝึกที่กำหนดไว้', 'error');
+        resetState();
+        return;
+      }
+
       const rowIndexToSend = (editMode && editingIndex !== null) ? editingIndex : null;
       sendSaveRequest(currentSheet, d, rowIndexToSend, resetState);
     }
@@ -1270,7 +1275,7 @@
       document.getElementById('login-overlay').classList.remove('hidden');
       document.getElementById('admin-main-content').classList.add('hidden');
       document.getElementById('admin-pass').value = '';
-      ['form-modal', 'crp-score-modal', 'training-date-picker'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+      ['form-modal', 'crp-score-modal', 'training-date-picker-modal'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
     });
 
     function checkAdminLogin() {
